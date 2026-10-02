@@ -967,9 +967,99 @@ function setProgress(percent, text) {
     }
 }
 
-// Handle Canva Bulk Excel Export
-function handleExportCanva() {
+// Helper to render images for Canva Bulk cell embedding
+async function renderCanvaBulkImages(onProgress) {
+    const total = state.puzzles.length;
+    const gridImages = [];
+    const solutionImages = [];
+    const calendarImages = [];
+
+    for (let i = 0; i < total; i++) {
+        const p = state.puzzles[i];
+        let dTxt = null;
+
+        if (state.dateEnabled) {
+            const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
+            dTxt = info.dateStr;
+
+            if (state.dateMode === "calendar_image") {
+                const calCnv = renderMiniMonthCalendarCanvas({
+                    year: info.year,
+                    month: info.month,
+                    highlightDay: info.highlightDay,
+                    theme: state.calTheme,
+                    firstDaySunday: state.calSunday,
+                    showCardBorder: state.calBorder,
+                    showYear: state.calShowYear
+                });
+                calendarImages.push(calCnv.toDataURL("image/png"));
+            }
+        }
+
+        if (state.mode === "sudoku") {
+            const gridCnv = renderSudokuGridCanvas({
+                puzzle: p,
+                style: state.activeStyle,
+                cellMm: 12.0,
+                dpi: 150,
+                solution: false,
+                dateText: dTxt
+            });
+            gridImages.push(gridCnv.toDataURL("image/png"));
+
+            if (state.sameExcel) {
+                const solCnv = renderSudokuGridCanvas({
+                    puzzle: p,
+                    style: state.activeStyle,
+                    cellMm: 12.0,
+                    dpi: 150,
+                    solution: true
+                });
+                solutionImages.push(solCnv.toDataURL("image/png"));
+            }
+        } else {
+            const gridCnv = renderWordSearchGridCanvas({
+                puzzle: p,
+                style: state.activeStyle,
+                cellMm: 9.0,
+                dpi: 150,
+                solution: false,
+                dateText: dTxt,
+                showGridLines: true
+            });
+            gridImages.push(gridCnv.toDataURL("image/png"));
+
+            if (state.sameExcel) {
+                const solCnv = renderWordSearchGridCanvas({
+                    puzzle: p,
+                    style: state.activeStyle,
+                    cellMm: 9.0,
+                    dpi: 150,
+                    solution: true,
+                    showGridLines: true
+                });
+                solutionImages.push(solCnv.toDataURL("image/png"));
+            }
+        }
+
+        if (onProgress && (i % 4 === 0 || i === total - 1)) {
+            onProgress(Math.round(((i + 1) / total) * 65));
+            await new Promise(r => setTimeout(r, 0));
+        }
+    }
+
+    return { gridImages, solutionImages, calendarImages };
+}
+
+// Handle Canva Bulk Excel Export (with REAL embedded floating images)
+async function handleExportCanva() {
     try {
+        setProgress(5, "Rendering puzzle images for Canva Bulk cell embedding...");
+        const { gridImages, solutionImages, calendarImages } = await renderCanvaBulkImages(
+            pct => setProgress(pct, `Embedding images into Canva Excel: ${pct}%...`)
+        );
+
+        setProgress(70, "Building Canva Bulk Excel workbook with embedded pictures...");
         const dateStrings = state.puzzles.map((_, i) =>
             state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
         );
@@ -978,27 +1068,36 @@ function handleExportCanva() {
         let filename;
 
         if (state.mode === "sudoku") {
-            buffer = buildCanvaSudokuExcel({
+            buffer = await buildCanvaSudokuExcel({
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image"
+                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+                gridImages,
+                solutionImages,
+                calendarImages
             });
             filename = "sudoku_canva_bulk.xlsx";
         } else {
-            buffer = buildCanvaWordSearchExcel({
+            buffer = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image"
+                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+                gridImages,
+                solutionImages,
+                calendarImages
             });
             filename = "wordsearch_canva_bulk.xlsx";
         }
 
+        setProgress(95, "Downloading Canva Bulk workbook...");
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         saveAs(blob, filename);
+        setTimeout(() => setProgress(null), 1000);
     } catch (err) {
+        setProgress(null);
         alert(`Export failed: ${err.message}`);
     }
 }
@@ -1094,17 +1193,23 @@ async function handleExportZip() {
 
         const canvasToBlob = (canvas) => new Promise(resolve => canvas.toBlob(resolve, "image/png"));
 
+        const gridImages = [];
+        const solutionImages = [];
+        const calendarImages = [];
+
         for (let i = 0; i < total; i++) {
             const p = state.puzzles[i];
             const pPad = String(i + 1).padStart(3, "0");
 
             let dTxt = null;
+            let calCnv = null;
+
             if (state.dateEnabled) {
                 const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
                 dTxt = info.dateStr;
 
                 if (state.dateMode === "calendar_image") {
-                    const calCnv = renderMiniMonthCalendarCanvas({
+                    calCnv = renderMiniMonthCalendarCanvas({
                         year: info.year,
                         month: info.month,
                         highlightDay: info.highlightDay,
@@ -1115,12 +1220,16 @@ async function handleExportZip() {
                     });
                     const calBlob = await canvasToBlob(calCnv);
                     imgFolder.file(`page_${pPad}_calendar.png`, calBlob);
+                    calendarImages.push(calCnv.toDataURL("image/png"));
                 }
             }
 
+            let gridCnv = null;
+            let solCnv = null;
+
             if (state.mode === "sudoku") {
                 // Sudoku Grid Image (300 DPI)
-                const gridCnv = renderSudokuGridCanvas({
+                gridCnv = renderSudokuGridCanvas({
                     puzzle: p,
                     style: state.activeStyle,
                     cellMm: 12.0,
@@ -1130,9 +1239,10 @@ async function handleExportZip() {
                 });
                 const gridBlob = await canvasToBlob(gridCnv);
                 imgFolder.file(`page_${pPad}_grid.png`, gridBlob);
+                gridImages.push(gridCnv.toDataURL("image/png"));
 
                 // Sudoku Solution Image (300 DPI)
-                const solCnv = renderSudokuGridCanvas({
+                solCnv = renderSudokuGridCanvas({
                     puzzle: p,
                     style: state.activeStyle,
                     cellMm: 12.0,
@@ -1141,9 +1251,11 @@ async function handleExportZip() {
                 });
                 const solBlob = await canvasToBlob(solCnv);
                 imgFolder.file(`page_${pPad}_solution.png`, solBlob);
+                solutionImages.push(solCnv.toDataURL("image/png"));
+
             } else {
                 // Word Search Grid Image (300 DPI)
-                const gridCnv = renderWordSearchGridCanvas({
+                gridCnv = renderWordSearchGridCanvas({
                     puzzle: p,
                     style: state.activeStyle,
                     cellMm: 9.0,
@@ -1154,9 +1266,10 @@ async function handleExportZip() {
                 });
                 const gridBlob = await canvasToBlob(gridCnv);
                 imgFolder.file(`page_${pPad}_grid.png`, gridBlob);
+                gridImages.push(gridCnv.toDataURL("image/png"));
 
                 // Word Search Solution Image (300 DPI)
-                const solCnv = renderWordSearchGridCanvas({
+                solCnv = renderWordSearchGridCanvas({
                     puzzle: p,
                     style: state.activeStyle,
                     cellMm: 9.0,
@@ -1166,6 +1279,7 @@ async function handleExportZip() {
                 });
                 const solBlob = await canvasToBlob(solCnv);
                 imgFolder.file(`page_${pPad}_solution.png`, solBlob);
+                solutionImages.push(solCnv.toDataURL("image/png"));
             }
 
             if (i % 5 === 0 || i === total - 1) {
@@ -1175,19 +1289,22 @@ async function handleExportZip() {
             }
         }
 
-        // Add Canva Excel
-        setProgress(75, "Adding Canva Bulk Create Excel workbook...");
+        // Add Canva Excel with embedded pictures
+        setProgress(75, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
         const dateStrings = state.puzzles.map((_, i) =>
             state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
         );
 
         if (state.mode === "sudoku") {
-            const canvaBuffer = buildCanvaSudokuExcel({
+            const canvaBuffer = await buildCanvaSudokuExcel({
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image"
+                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+                gridImages,
+                solutionImages,
+                calendarImages
             });
             zip.file("sudoku_canva_bulk.xlsx", canvaBuffer);
 
@@ -1196,11 +1313,14 @@ async function handleExportZip() {
                 zip.file("sudoku_solutions.xlsx", solBuffer);
             }
         } else {
-            const canvaBuffer = buildCanvaWordSearchExcel({
+            const canvaBuffer = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image"
+                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+                gridImages,
+                solutionImages,
+                calendarImages
             });
             zip.file("wordsearch_canva_bulk.xlsx", canvaBuffer);
         }
