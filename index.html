@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDP Activity Studio · Web Edition (Sudoku & Word Search)</title>
+    <meta name="description" content="Professional client-side KDP Activity Book generator for Sudoku and Word Search. Exports 300 DPI PNGs, Canva Bulk Create Excel, and print-ready interior PDFs.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- External Client-Side Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="studio-header">
+        <div class="brand-wrapper">
+            <div class="brand-logo">🧩</div>
+            <div class="brand-text">
+                <h1>KDP Activity Studio <span class="brand-badge">Cloudflare Native</span></h1>
+                <div class="brand-subtitle">Commercial Print & Canva Bulk Create Suite</div>
+            </div>
+        </div>
+
+        <div class="studio-tabs-nav">
+            <button class="studio-tab-btn active" id="mode-sudoku-btn">🧩 Sudoku Studio</button>
+            <button class="studio-tab-btn" id="mode-wordsearch-btn">🔍 Word Search Studio</button>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" id="theme-toggle-btn" title="Toggle Dark/Light Mode">🌙</button>
+            <button class="icon-btn" id="new-book-btn" title="Generate New Unique Book Seed">🎲</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Split Layout -->
+    <main class="studio-layout">
+        <!-- Left Sidebar Controls -->
+        <aside class="studio-sidebar">
+            <nav class="sidebar-tabs">
+                <button class="sidebar-tab-btn active" data-tab="tab-volume">
+                    <span class="tab-icon">📚</span>
+                    <span>Volume</span>
+                </button>
+                <button class="sidebar-tab-btn" data-tab="tab-date">
+                    <span class="tab-icon">📅</span>
+                    <span>Calendar</span>
+                </button>
+                <button class="sidebar-tab-btn" data-tab="tab-styling">
+                    <span class="tab-icon">🎨</span>
+                    <span>Styling</span>
+                </button>
+                <button class="sidebar-tab-btn" data-tab="tab-rules">
+                    <span class="tab-icon">⚙️</span>
+                    <span>Rules</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-content">
+                <!-- Tab 1: Volume & Layout -->
+                <div class="tab-panel active" id="tab-volume">
+                    <div class="control-section">
+                        <div class="section-label">📚 Book Page Layout & Counts</div>
+                        
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="sdk-count-input">Puzzle Count <span class="hint" id="sdk-count-badge">50</span></label>
+                                <input type="number" id="sdk-count-input" min="1" max="366" value="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-start-num">Start Number</label>
+                                <input type="number" id="sdk-start-num" min="1" max="9999" value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Quick Count Presets</label>
+                            <div class="preset-pills">
+                                <button class="preset-pill-btn" data-count="12">12 (1/Mo)</button>
+                                <button class="preset-pill-btn" data-count="24">24 (2/Mo)</button>
+                                <button class="preset-pill-btn active" data-count="50">50</button>
+                                <button class="preset-pill-btn" data-count="100">100</button>
+                                <button class="preset-pill-btn" data-count="200">200</button>
+                                <button class="preset-pill-btn" data-count="365">365 (1 Year)</button>
+                                <button class="preset-pill-btn" data-count="366">366 (Leap)</button>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="sdk-puz-per-page">Games Per Page</label>
+                                <select id="sdk-puz-per-page">
+                                    <option value="1" selected>1 game / page (Large Print)</option>
+                                    <option value="2">2 games / page (KDP standard)</option>
+                                    <option value="4">4 games / page (Compact 2x2)</option>
+                                    <option value="6">6 games / page (Dense 2x3)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-sol-per-page">Solutions Per Page</label>
+                                <select id="sdk-sol-per-page">
+                                    <option value="1">1 solution / page</option>
+                                    <option value="2">2 solutions / page</option>
+                                    <option value="4">4 solutions / page</option>
+                                    <option value="6" selected>6 solutions / page</option>
+                                    <option value="9">9 solutions / page</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sdk-trim-choice">KDP Book Trim Size</label>
+                            <select id="sdk-trim-choice">
+                                <option value="8.5 x 11 inches (Letter)" selected>8.5 x 11 inches (Letter - KDP Best Seller)</option>
+                                <option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
+                                <option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
+                                <option value="8 x 10 inches">8 x 10 inches</option>
+                            </select>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Include Solution in Same Excel</div>
+                                <div class="toggle-sub">Pairs puzzle & solution in 1 Canva Bulk row</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="sdk-same-excel-tog" checked>
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Include Rules / Instructions</div>
+                                <div class="toggle-sub">Draws concise solver instructions on book page</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="sdk-instructions-tog" checked>
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Date & Calendar -->
+                <div class="tab-panel" id="tab-date">
+                    <div class="control-section">
+                        <div class="section-label">📅 Date & Calendar Scheduling</div>
+                        
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Enable Date / Calendar Headers</div>
+                                <div class="toggle-sub">Assign dates or 300 DPI mini month calendar cards</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="sdk-date-enabled-tog">
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+
+                        <div id="date-controls-subpanel" style="display:none; flex-direction:column; gap:0.85rem;">
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="sdk-cal-year-sel">Publication Year</label>
+                                    <select id="sdk-cal-year-sel">
+                                        <option value="2025">2025</option>
+                                        <option value="2026" selected>2026</option>
+                                        <option value="2027">2027</option>
+                                        <option value="2028">2028</option>
+                                        <option value="2029">2029</option>
+                                        <option value="2030">2030</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="sdk-start-date-input">Starting Date</label>
+                                    <input type="date" id="sdk-start-date-input" value="2026-01-01">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sdk-cal-progression">Progression Cadence</label>
+                                <select id="sdk-cal-progression">
+                                    <option value="daily" selected>Daily (1 Day / Puzzle)</option>
+                                    <option value="monthly">Monthly (1 Month / Puzzle)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Display Mode</label>
+                                <div class="preset-pills">
+                                    <button class="preset-pill-btn active" id="disp-text-btn">📝 Formatted Date Text</button>
+                                    <button class="preset-pill-btn" id="disp-card-btn">🗓️ Mini Month Calendar Card</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group" id="date-fmt-group">
+                                <label for="sdk-date-fmt-sel">Date Label Format</label>
+                                <select id="sdk-date-fmt-sel"></select>
+                            </div>
+
+                            <div id="calendar-card-settings" style="display:none; flex-direction:column; gap:0.85rem;">
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="sdk-cal-theme-sel">Calendar Card Theme</label>
+                                        <select id="sdk-cal-theme-sel"></select>
+                                    </div>
+                                    <div class="toggle-row" style="margin-top:1.2rem;">
+                                        <div>
+                                            <div class="toggle-label">Card Border</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="sdk-cal-border-tog" checked>
+                                            <span class="slider-switch"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="form-row-2">
+                                    <div class="toggle-row">
+                                        <div>
+                                            <div class="toggle-label">Show Year in Header</div>
+                                            <div class="toggle-sub">SEPTEMBER 2026 vs SEPTEMBER</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="sdk-cal-show-year-tog" checked>
+                                            <span class="slider-switch"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div>
+                                            <div class="toggle-label">Start on Sunday</div>
+                                            <div class="toggle-sub">S M T W T F S</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="sdk-cal-sunday-tog" checked>
+                                            <span class="slider-switch"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Live Mini Calendar Card Preview -->
+                                <div style="display:flex; flex-direction:column; gap:0.3rem; margin-top:0.4rem;">
+                                    <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Live Mini Calendar Card Preview</span>
+                                    <div style="background:var(--bg-surface); padding:8px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; justify-content:center;">
+                                        <canvas id="cal-preview-thumbnail" width="300" height="240" style="max-width:180px; height:auto; border-radius:8px; box-shadow:var(--shadow-sm);"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Visual Styling -->
+                <div class="tab-panel" id="tab-styling">
+                    <div class="control-section">
+                        <div class="section-label">🎨 Audience & Style Presets</div>
+                        <div class="preset-pills" id="audience-preset-pills">
+                            <button class="preset-pill-btn active" data-preset="adult_classic">👔 Adult Classic</button>
+                            <button class="preset-pill-btn" data-preset="senior_large_print">👓 Senior / Large Print</button>
+                            <button class="preset-pill-btn" data-preset="checkerboard">🏁 Checkerboard</button>
+                            <button class="preset-pill-btn" data-preset="kids_fun">🎈 Kids Fun (Cards)</button>
+                            <button class="preset-pill-btn" data-preset="modern_minimalist">📐 Minimalist</button>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="sdk-cell-style">Cell Style</label>
+                                <select id="sdk-cell-style">
+                                    <option value="grid" selected>Continuous Grid Lines</option>
+                                    <option value="rounded_boxes">Rounded Cell Tiles</option>
+                                    <option value="boxes">Separated Square Boxes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-shading-mode">Region Shading</label>
+                                <select id="sdk-shading-mode">
+                                    <option value="none" selected>None (Clean White)</option>
+                                    <option value="checkerboard">Checkerboard 3x3</option>
+                                    <option value="diagonal">Diagonals (Sudoku X)</option>
+                                    <option value="windows">4 Windows (Windoku)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label for="sdk-outer-lw">Outer Frame (mm)</label>
+                                <input type="number" id="sdk-outer-lw" step="0.1" min="0.5" max="4.0" value="1.4">
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-block-lw">Block Divider (mm)</label>
+                                <input type="number" id="sdk-block-lw" step="0.1" min="0.4" max="3.0" value="1.0">
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-inner-lw">Inner Cell (mm)</label>
+                                <input type="number" id="sdk-inner-lw" step="0.1" min="0.2" max="2.0" value="0.4">
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="sdk-font-scale">Digit Scale (% of cell)</label>
+                                <input type="number" id="sdk-font-scale" min="40" max="95" value="64">
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-solution-mode">Solution Mark Mode</label>
+                                <select id="sdk-solution-mode">
+                                    <option value="color" selected>Distinct Royal Blue Color</option>
+                                    <option value="circled">Circled Solved Cells</option>
+                                    <option value="normal">Same as Clue Color</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Generator Rules & Content -->
+                <div class="tab-panel" id="tab-rules">
+                    <!-- Sudoku Rules Subpanel -->
+                    <div class="control-section" id="sdk-rules-section">
+                        <div class="section-label">⚙️ Sudoku Variant & Difficulty</div>
+                        
+                        <div class="form-group">
+                            <label for="sdk-type-select">Sudoku Game Type</label>
+                            <select id="sdk-type-select">
+                                <option value="classic_9x9" selected>Classic 9×9</option>
+                                <option value="mini_4x4">Kids Mini 4×4</option>
+                                <option value="junior_6x6">Junior 6×6</option>
+                                <option value="wordoku_9x9">Wordoku (Letter 9×9)</option>
+                                <option value="sudoku_x">Sudoku X (Diagonal)</option>
+                                <option value="windoku">Windoku (Hyper 4-Window)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="wordoku-group" style="display:none;">
+                            <label for="sdk-wordoku-word">Wordoku Keyword Anagram (9 distinct letters)</label>
+                            <input type="text" id="sdk-wordoku-word" value="PUBLISHER" maxlength="9">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sdk-difficulty-select">Difficulty Tier</label>
+                            <select id="sdk-difficulty-select">
+                                <option value="very_easy">Very Easy (★☆☆☆☆)</option>
+                                <option value="easy">Easy (★★☆☆☆)</option>
+                                <option value="medium" selected>Medium (★★★☆☆)</option>
+                                <option value="hard">Hard (★★★★☆)</option>
+                                <option value="expert">Expert (★★★★★)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="sdk-seed-input">Random Seed</label>
+                                <input type="number" id="sdk-seed-input" value="42">
+                            </div>
+                            <div class="form-group">
+                                <label for="sdk-title-tpl">Title Template</label>
+                                <input type="text" id="sdk-title-tpl" value="Sudoku #{num}">
+                            </div>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">180° Rotational Symmetry</div>
+                                <div class="toggle-sub">Authentic newspaper & publication clue balance</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="sdk-symmetric-tog" checked>
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Word Search Rules Subpanel -->
+                    <div class="control-section" id="ws-rules-section" style="display:none;">
+                        <div class="section-label">🔍 Word Search Content & Grid</div>
+                        
+                        <div class="form-group">
+                            <label>Word Bank Theme Presets</label>
+                            <div class="preset-pills" id="ws-theme-presets">
+                                <button class="preset-pill-btn active" data-theme="animals">🦁 Safari Animals</button>
+                                <button class="preset-pill-btn" data-theme="space">🚀 Deep Space</button>
+                                <button class="preset-pill-btn" data-theme="nature">🌿 Wonders of Nature</button>
+                                <button class="preset-pill-btn" data-theme="custom">✍️ Custom List</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                <label for="ws-word-list-input">Word List (One per line or comma-separated)</label>
+                                <span class="hint" id="ws-word-count-badge">18 words</span>
+                            </div>
+                            <textarea id="ws-word-list-input" rows="5" style="width:100%; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.6rem; font-family:var(--font-mono); font-size:0.82rem; background:var(--bg-main); color:var(--text-primary); resize:vertical;"></textarea>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-grid-dim-select">Grid Dimensions</label>
+                                <select id="ws-grid-dim-select">
+                                    <option value="12">12 × 12 (Junior / Kids)</option>
+                                    <option value="14">14 × 14</option>
+                                    <option value="15" selected>15 × 15 (Standard Best Seller)</option>
+                                    <option value="16">16 × 16</option>
+                                    <option value="18">18 × 18 (Hard / Dense)</option>
+                                    <option value="20">20 × 20 (Giant)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-difficulty-select">Placement Difficulty</label>
+                                <select id="ws-difficulty-select">
+                                    <option value="easy">Easy (→ ↓ Only)</option>
+                                    <option value="medium" selected>Medium (→ ↓ ↘ ↗)</option>
+                                    <option value="hard">Hard (Adds Backward ← ↑)</option>
+                                    <option value="expert">Expert (All 8 Directions)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-lang-select">Language Cleaning</label>
+                                <select id="ws-lang-select">
+                                    <option value="en" selected>English</option>
+                                    <option value="de">German (Ä/Ö/Ü → AE/OE/UE)</option>
+                                    <option value="es">Spanish (Preserves Ñ)</option>
+                                    <option value="fr">French</option>
+                                    <option value="it">Italian</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-word-cols-select">Word Bank Columns</label>
+                                <select id="ws-word-cols-select">
+                                    <option value="2">2 Columns</option>
+                                    <option value="3" selected>3 Columns (Balanced)</option>
+                                    <option value="4">4 Columns (Compact)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-seed-input">Random Seed</label>
+                                <input type="number" id="ws-seed-input" value="101">
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-title-tpl">Title Template</label>
+                                <input type="text" id="ws-title-tpl" value="Word Search #{num}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Stage Live Preview & Export Container -->
+        <section class="studio-stage">
+            <!-- Metrics Strip -->
+            <div class="metrics-strip">
+                <div class="metric-item">
+                    <span class="metric-title">Puzzles</span>
+                    <span class="metric-value" id="metric-puzzles">50</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-title">Type</span>
+                    <span class="metric-value" id="metric-type">Classic 9×9</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-title">Difficulty</span>
+                    <span class="metric-value" id="metric-diff">Medium ★★★☆☆</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-title">Grid Size</span>
+                    <span class="metric-value" id="metric-grid">9 × 9</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-title">Clues / Board</span>
+                    <span class="metric-value" id="metric-clues">32</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-title">Games / Page</span>
+                    <span class="metric-value" id="metric-games-page">1</span>
+                </div>
+            </div>
+
+            <!-- Stage Navigation Toolbar -->
+            <div class="stage-toolbar">
+                <div class="view-mode-selector">
+                    <button class="view-btn active" data-view="book_page">📖 Book Page</button>
+                    <button class="view-btn" data-view="single_puzzle">🔲 Single Puzzle</button>
+                    <button class="view-btn" data-view="single_solution">🎯 Single Solution</button>
+                    <button class="view-btn" data-view="solution_page">📑 Solution Page</button>
+                </div>
+
+                <div class="page-nav-controls">
+                    <button class="nav-arrow-btn" id="btn-page-prev">◀</button>
+                    <select id="stage-page-select" style="width:auto; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600;"></select>
+                    <button class="nav-arrow-btn" id="btn-page-next">▶</button>
+                </div>
+            </div>
+
+            <!-- Real-Time Interactive Canvas Viewport -->
+            <div class="canvas-viewport">
+                <div class="preview-canvas-wrapper" id="preview-wrapper">
+                    <canvas id="main-stage-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Export Command Center Bar -->
+            <div class="export-panel">
+                <div class="export-header">
+                    <div>
+                        <div class="export-title">Export Production Bundle</div>
+                        <div class="export-spec" id="export-summary-text">50 Puzzles · 8.5 x 11" Letter · 300 DPI Commercial Print Ready</div>
+                    </div>
+                </div>
+
+                <div class="export-buttons-grid">
+                    <button class="btn-primary" id="btn-export-canva">
+                        <span>📦</span>
+                        <span>Canva Bulk Excel</span>
+                    </button>
+                    <button class="btn-secondary" id="btn-export-solutions">
+                        <span>📑</span>
+                        <span>Solutions Excel</span>
+                    </button>
+                    <button class="btn-secondary" id="btn-export-pdf">
+                        <span>📕</span>
+                        <span>KDP Print PDF</span>
+                    </button>
+                    <button class="btn-secondary" id="btn-export-zip">
+                        <span>🗂️</span>
+                        <span>Complete 300 DPI ZIP</span>
+                    </button>
+                </div>
+
+                <!-- Export Progress Bar -->
+                <div class="progress-container" id="export-progress-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="export-progress-fill"></div>
+                    </div>
+                    <div class="progress-text" id="export-progress-text">Generating bundle...</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Main Controller Module -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
