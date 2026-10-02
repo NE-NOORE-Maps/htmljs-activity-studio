@@ -603,8 +603,8 @@ input:checked + .slider-switch:before {
     background: radial-gradient(circle at center, rgba(45, 122, 93, 0.04) 0%, rgba(0, 0, 0, 0.02) 100%);
     border: 1px dashed var(--border-strong);
     border-radius: var(--radius-lg);
-    padding: 2rem;
-    min-height: 480px;
+    padding: 1.25rem;
+    min-height: 400px;
     position: relative;
     overflow: auto;
 }
@@ -612,16 +612,56 @@ input:checked + .slider-switch:before {
 .preview-canvas-wrapper {
     background-color: #ffffff;
     box-shadow: var(--shadow-paper);
-    border-radius: 4px;
-    transition: transform 0.2s ease;
-    max-width: 100%;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    max-width: 480px; /* Reduced by 50% for optimal viewability */
+    width: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .preview-canvas-wrapper canvas {
     display: block;
     max-width: 100%;
+    max-height: 56vh; /* Ensure full page fits vertically without excessive scrolling */
     height: auto;
-    border-radius: 4px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    gap: 2px;
+}
+
+.zoom-btn {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zoom-btn:hover {
+    color: var(--text-primary);
+}
+
+.zoom-btn.active {
+    background-color: var(--bg-surface);
+    color: var(--primary-700);
+    box-shadow: var(--shadow-sm);
 }
 
 /* Export Command Center Bar */

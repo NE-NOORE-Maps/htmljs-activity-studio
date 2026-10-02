@@ -187,6 +187,8 @@ const dom = {
     btnPagePrev: document.getElementById("btn-page-prev"),
     btnPageNext: document.getElementById("btn-page-next"),
     mainCanvas: document.getElementById("main-stage-canvas"),
+    previewWrapper: document.getElementById("preview-wrapper"),
+    zoomBtns: document.querySelectorAll(".zoom-btn"),
     exportSummary: document.getElementById("export-summary-text"),
 
     // Export Buttons & Progress
@@ -644,6 +646,25 @@ function setupEvents() {
             state.viewMode = btn.dataset.view;
             state.currentPage = 1;
             renderStage();
+        });
+    });
+
+    // Zoom Controls (50% Default, 75%, 100%)
+    dom.zoomBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            dom.zoomBtns.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            const scale = parseFloat(btn.dataset.scale) || 0.5;
+            state.previewScale = scale;
+            if (dom.previewWrapper) {
+                if (scale === 0.5) {
+                    dom.previewWrapper.style.maxWidth = "480px";
+                } else if (scale === 0.75) {
+                    dom.previewWrapper.style.maxWidth = "720px";
+                } else {
+                    dom.previewWrapper.style.maxWidth = "100%";
+                }
+            }
         });
     });
 
@@ -1213,6 +1234,10 @@ window.addEventListener("DOMContentLoaded", () => {
     if (dom.wsWordListInput) {
         dom.wsWordListInput.value = state.wsWords.join("\n");
         dom.wsWordCountBadge.textContent = `${state.wsWords.length} words`;
+    }
+
+    if (dom.previewWrapper) {
+        dom.previewWrapper.style.maxWidth = "480px";
     }
 
     populateDateFormats();

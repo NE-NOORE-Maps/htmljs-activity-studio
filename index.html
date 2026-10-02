@@ -496,10 +496,19 @@
                     <button class="view-btn" data-view="solution_page">📑 Solution Page</button>
                 </div>
 
-                <div class="page-nav-controls">
-                    <button class="nav-arrow-btn" id="btn-page-prev">◀</button>
-                    <select id="stage-page-select" style="width:auto; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600;"></select>
-                    <button class="nav-arrow-btn" id="btn-page-next">▶</button>
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    <!-- Zoom Scale Controls -->
+                    <div class="zoom-controls" id="zoom-controls">
+                        <button class="zoom-btn active" data-scale="0.5" title="50% Preview Size (Default Compact)">50%</button>
+                        <button class="zoom-btn" data-scale="0.75" title="75% Preview Size">75%</button>
+                        <button class="zoom-btn" data-scale="1.0" title="100% Full Resolution">100%</button>
+                    </div>
+
+                    <div class="page-nav-controls">
+                        <button class="nav-arrow-btn" id="btn-page-prev">◀</button>
+                        <select id="stage-page-select" style="width:auto; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600;"></select>
+                        <button class="nav-arrow-btn" id="btn-page-next">▶</button>
+                    </div>
                 </div>
             </div>
 
