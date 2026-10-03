@@ -10,6 +10,7 @@ import {
     DIFFICULTY_LABELS,
     DIFFICULTY_STARS,
     TYPE_CONFIGS,
+    generateSudokuPuzzle,
     generateSudokuBatch
 } from "./sudoku_engine.js";
 
@@ -125,8 +126,11 @@ const state = {
     wsDifficulty: "medium",
     wsTitleTemplate: "Word Search #{num}",
 
-    // Generated batch cache
-    puzzles: []
+    // Generated preview slice & build cache
+    puzzles: [],
+    totalPuzzlesCount: 50,
+    builtPuzzlesCache: null,
+    builtPuzzlesHash: null
 };
 
 // DOM Element References
@@ -434,86 +438,203 @@ function setStudioMode(mode) {
     refreshStudio();
 }
 
-// Generate Puzzles Batch (Sudoku or Word Search)
-function updatePuzzlesBatch() {
-    if (state.mode === "sudoku") {
-        state.puzzles = generateSudokuBatch({
-            count: state.puzzleCount,
-            startNum: state.startNumber,
-            seed: state.seed,
-            puzzleType: state.sudokuType,
-            difficulty: state.difficulty,
-            symmetric: state.symmetric,
-            wordokuWord: state.wordokuWord,
-            titleTemplate: state.titleTemplate
-        });
+// Sudoku Config Hash for build caching
+function getSudokuConfigHash() {
+    return [
+        "sudoku",
+        state.puzzleCount,
+        state.startNumber,
+        state.seed,
+        state.sudokuType,
+        state.difficulty,
+        state.symmetric,
+        state.wordokuWord,
+        state.titleTemplate
+    ].join("|");
+}
+
+// Word Search Config Hash for build caching
+function getWsConfigHash() {
+    return [
+        "ws",
+        state.wsPuzzleCount,
+        state.wsStartNumber,
+        state.wsSeed,
+        state.wsLanguage,
+        state.wsAccentMode,
+        state.wsDifficulty,
+        state.wsGridChoice,
+        state.wsRows,
+        state.wsCols,
+        state.wsWordsPerPage,
+        state.wsTitleTemplate,
+        state.wsThemeInput,
+        state.wsTargetCountEnforced,
+        state.wsSource,
+        state.wsRawText,
+        state.wsCsvFileName,
+        state.wsCsvContent ? state.wsCsvContent.length : 0
+    ].join("|");
+}
+
+// Extract base chunks for Word Search
+function getWsBaseChunks() {
+    let groups = {};
+    if (state.wsSource === "csv" && state.wsCsvContent) {
+        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
     } else {
-        // Word Search Batch (Multi-theme & Chunks support)
-        let groups = {};
-        if (state.wsSource === "csv" && state.wsCsvContent) {
-            groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+        const raw = state.wsRawText || LANGUAGE_CONFIGS[state.wsLanguage]?.sample_words || "";
+        groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+    }
+
+    const baseChunks = [];
+    const wpp = state.wsWordsPerPage || 12;
+    for (const [theme, words] of Object.entries(groups)) {
+        const cleaned = words.filter(w => w.length >= 3);
+        for (let start = 0; start < cleaned.length; start += wpp) {
+            const chunk = cleaned.slice(start, start + wpp);
+            if (chunk.length > 0) {
+                baseChunks.push({ theme, words: chunk });
+            }
+        }
+    }
+
+    if (baseChunks.length === 0) {
+        baseChunks.push({
+            theme: state.wsThemeInput || "Animals",
+            words: ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"]
+        });
+    }
+    return baseChunks;
+}
+
+// Determine total puzzle count needed for Word Search
+function getWsTotalNeeded(baseChunks) {
+    let totalNeeded = baseChunks.length;
+    if (state.wsTargetCountEnforced) {
+        totalNeeded = state.wsPuzzleCount || 12;
+    } else if (state.wsSource === "paste" && state.wsPuzzleCount) {
+        if (baseChunks.length === 1 && state.wsPuzzleCount > 1) {
+            totalNeeded = state.wsPuzzleCount;
+        }
+    }
+    return Math.max(1, totalNeeded);
+}
+
+// Determine grid dimensions & fill alphabet for Word Search
+function getWsActiveDimensions() {
+    let rows = 12, cols = 10;
+    if (state.wsGridChoice === "auto") {
+        rows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
+        cols = rows;
+    } else if (state.wsGridChoice === "custom") {
+        rows = state.wsRows || 12;
+        cols = state.wsCols || 10;
+    } else if (state.wsGridChoice && state.wsGridChoice.includes("x")) {
+        const parts = state.wsGridChoice.split("x").map(Number);
+        rows = parts[0] || 12;
+        cols = parts[1] || 10;
+    }
+
+    const langCfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+    let fillAlpha = langCfg.fill_alphabet || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    if (state.wsAccentMode === "Strip All Accents (A-Z)") {
+        fillAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    }
+
+    return { rows, cols, fillAlpha };
+}
+
+// Generate Puzzles Batch (FAST: Generates ONLY the 1 active preview page)
+function updatePuzzlesBatch() {
+    // Invalidate build cache if config changed
+    const currHash = state.mode === "sudoku" ? getSudokuConfigHash() : getWsConfigHash();
+    if (state.builtPuzzlesHash && state.builtPuzzlesHash !== currHash) {
+        state.builtPuzzlesCache = null;
+        state.builtPuzzlesHash = null;
+    }
+
+    if (state.mode === "sudoku") {
+        state.totalPuzzlesCount = Math.max(1, state.puzzleCount);
+        const ppp = state.puzzlesPerPage || 1;
+        const spp = state.solutionsPerPage || 6;
+
+        let totalPages = 1;
+        if (state.viewMode === "book_page") {
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / ppp));
+        } else if (state.viewMode === "solution_page") {
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / spp));
         } else {
-            const raw = state.wsRawText || LANGUAGE_CONFIGS[state.wsLanguage]?.sample_words || "";
-            groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+            totalPages = state.totalPuzzlesCount;
         }
 
-        // Group into words_per_page chunks
-        const baseChunks = [];
-        const wpp = state.wsWordsPerPage || 12;
-        for (const [theme, words] of Object.entries(groups)) {
-            const cleaned = words.filter(w => w.length >= 3);
-            for (let start = 0; start < cleaned.length; start += wpp) {
-                const chunk = cleaned.slice(start, start + wpp);
-                if (chunk.length > 0) {
-                    baseChunks.push({ theme, words: chunk });
-                }
-            }
+        if (state.currentPage > totalPages) state.currentPage = totalPages;
+        if (state.currentPage < 1) state.currentPage = 1;
+
+        let startIdx = 0;
+        let count = 1;
+        if (state.viewMode === "book_page") {
+            startIdx = (state.currentPage - 1) * ppp;
+            count = Math.min(ppp, state.totalPuzzlesCount - startIdx);
+        } else if (state.viewMode === "solution_page") {
+            startIdx = (state.currentPage - 1) * spp;
+            count = Math.min(spp, state.totalPuzzlesCount - startIdx);
+        } else {
+            startIdx = state.currentPage - 1;
+            count = 1;
         }
 
-        if (baseChunks.length === 0) {
-            baseChunks.push({
-                theme: state.wsThemeInput || "Animals",
-                words: ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"]
+        const previewPuzzles = [];
+        for (let i = 0; i < count; i++) {
+            const pIdx = startIdx + i;
+            const pSeed = (state.seed + pIdx * 17) % 2147483647;
+            const p = generateSudokuPuzzle({
+                puzzleId: state.startNumber + pIdx,
+                puzzleType: state.sudokuType,
+                difficulty: state.difficulty,
+                seed: pSeed,
+                symmetric: state.symmetric,
+                wordokuWord: state.wordokuWord,
+                titleTemplate: state.titleTemplate
             });
+            previewPuzzles.push(p);
+        }
+        state.puzzles = previewPuzzles;
+    } else {
+        const baseChunks = getWsBaseChunks();
+        state.totalPuzzlesCount = getWsTotalNeeded(baseChunks);
+        const spp = state.wsSolutionsPerPage || 4;
+
+        let totalPages = 1;
+        if (state.viewMode === "solution_page") {
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / spp));
+        } else {
+            totalPages = state.totalPuzzlesCount;
         }
 
-        // Determine target count
-        let totalNeeded = baseChunks.length;
-        if (state.wsTargetCountEnforced) {
-            totalNeeded = state.wsPuzzleCount || 12;
-        } else if (state.wsSource === "paste" && state.wsPuzzleCount) {
-            if (baseChunks.length === 1 && state.wsPuzzleCount > 1) {
-                totalNeeded = state.wsPuzzleCount;
-            }
+        if (state.currentPage > totalPages) state.currentPage = totalPages;
+        if (state.currentPage < 1) state.currentPage = 1;
+
+        let startIdx = 0;
+        let count = 1;
+        if (state.viewMode === "solution_page") {
+            startIdx = (state.currentPage - 1) * spp;
+            count = Math.min(spp, state.totalPuzzlesCount - startIdx);
+        } else {
+            startIdx = state.currentPage - 1;
+            count = 1;
         }
 
-        // Determine grid rows & cols
-        let rows = 12, cols = 10;
-        if (state.wsGridChoice === "auto") {
-            rows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
-            cols = rows;
-        } else if (state.wsGridChoice === "custom") {
-            rows = state.wsRows || 12;
-            cols = state.wsCols || 10;
-        } else if (state.wsGridChoice && state.wsGridChoice.includes("x")) {
-            const parts = state.wsGridChoice.split("x").map(Number);
-            rows = parts[0] || 12;
-            cols = parts[1] || 10;
-        }
-
-        const langCfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
-        let fillAlpha = langCfg.fill_alphabet || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        if (state.wsAccentMode === "Strip All Accents (A-Z)") {
-            fillAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        }
-
+        const { rows, cols, fillAlpha } = getWsActiveDimensions();
         const generated = [];
-        for (let i = 0; i < totalNeeded; i++) {
-            const pNum = (state.wsStartNumber || 1) + i;
-            const item = baseChunks[i % baseChunks.length];
-            const themeTitle = (totalNeeded > baseChunks.length && baseChunks.length > 1)
-                ? `${item.theme} #${Math.floor(i / baseChunks.length) + 1}`
-                : (baseChunks.length === 1 && totalNeeded > 1
+
+        for (let i = 0; i < count; i++) {
+            const globalIdx = startIdx + i;
+            const pNum = (state.wsStartNumber || 1) + globalIdx;
+            const item = baseChunks[globalIdx % baseChunks.length];
+            const themeTitle = (state.totalPuzzlesCount > baseChunks.length && baseChunks.length > 1)
+                ? `${item.theme} #${Math.floor(globalIdx / baseChunks.length) + 1}`
+                : (baseChunks.length === 1 && state.totalPuzzlesCount > 1
                     ? `${item.theme} #${pNum}`
                     : item.theme);
 
@@ -529,7 +650,7 @@ function updatePuzzlesBatch() {
                 language: state.wsLanguage,
                 title: pTitle,
                 fillAlphabet: fillAlpha,
-                seed: (state.wsSeed || 42) + i * 19
+                seed: (state.wsSeed || 42) + globalIdx * 19
             });
 
             puzzle.puzzleId = pNum;
@@ -544,7 +665,7 @@ function updatePuzzlesBatch() {
 
 // Update Top Metrics Strip
 function updateMetrics() {
-    dom.metricPuzzles.textContent = state.puzzles.length;
+    dom.metricPuzzles.textContent = state.totalPuzzlesCount;
 
     if (state.mode === "sudoku") {
         const cfg = TYPE_CONFIGS[state.sudokuType];
@@ -554,12 +675,12 @@ function updateMetrics() {
         dom.metricClues.textContent = state.puzzles[0] ? state.puzzles[0].cluesCount : "-";
         dom.metricGamesPage.textContent = state.puzzlesPerPage;
 
-        const totalPages = Math.ceil(state.puzzles.length / (state.puzzlesPerPage || 1));
+        const totalPages = Math.ceil(state.totalPuzzlesCount / (state.puzzlesPerPage || 1));
         const effectiveBatch = (state.canvaBatchSize && state.canvaBatchSize > 0) ? state.canvaBatchSize : totalPages;
         const batches = Math.ceil(totalPages / effectiveBatch);
         const batchInfo = (batches > 1) ? ` · Canva: ${batches} batches (${state.canvaBatchSize}p/file)` : "";
 
-        dom.exportSummary.textContent = `${state.puzzleCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page${batchInfo} · 300 DPI Commercial Print Ready`;
+        dom.exportSummary.textContent = `${state.totalPuzzlesCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page${batchInfo} · 300 DPI Commercial Print Ready`;
     } else {
         const langShort = (state.wsLanguage || "English").split(" ")[0];
         dom.metricType.textContent = `Word Search (${langShort})`;
@@ -568,12 +689,12 @@ function updateMetrics() {
         dom.metricClues.textContent = state.puzzles[0] && state.puzzles[0].placedWords ? state.puzzles[0].placedWords.length : "-";
         dom.metricGamesPage.textContent = `1 (${state.wsWordCols} cols)`;
 
-        const totalPages = state.puzzles.length;
+        const totalPages = state.totalPuzzlesCount;
         const effectiveBatch = (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0) ? state.wsCanvaBatchSize : totalPages;
         const batches = Math.ceil(totalPages / effectiveBatch);
         const batchInfo = (batches > 1) ? ` · Canva: ${batches} batches (${state.wsCanvaBatchSize}p/file)` : "";
 
-        dom.exportSummary.textContent = `${state.puzzles.length} Word Searches · ${state.wsTrimChoice}${batchInfo} · 300 DPI Commercial Print Ready`;
+        dom.exportSummary.textContent = `${state.totalPuzzlesCount} Word Searches · ${state.wsTrimChoice}${batchInfo} · 300 DPI Commercial Print Ready`;
     }
 
     updateCanvaBatchBadges();
@@ -581,7 +702,7 @@ function updateMetrics() {
 
 function updateCanvaBatchBadges() {
     if (dom.sdkCanvaBatchBadge) {
-        const totalPuzzles = state.mode === "sudoku" ? state.puzzles.length : state.puzzleCount;
+        const totalPuzzles = state.totalPuzzlesCount;
         const totalPages = Math.ceil(totalPuzzles / (state.puzzlesPerPage || 1));
         if (!state.canvaBatchSize || state.canvaBatchSize <= 0) {
             dom.sdkCanvaBatchBadge.textContent = `No split (${totalPages} pages)`;
@@ -594,7 +715,7 @@ function updateCanvaBatchBadges() {
     }
 
     if (dom.wsCanvaBatchBadge) {
-        const totalPages = state.mode === "wordsearch" ? state.puzzles.length : (state.wsPuzzleCount || 12);
+        const totalPages = state.mode === "wordsearch" ? state.totalPuzzlesCount : (state.wsPuzzleCount || 12);
         if (!state.wsCanvaBatchSize || state.wsCanvaBatchSize <= 0) {
             dom.wsCanvaBatchBadge.textContent = `No split (${totalPages} pages)`;
         } else {
@@ -639,21 +760,21 @@ function renderStage() {
     let totalPages = 1;
     if (state.mode === "sudoku") {
         if (state.viewMode === "book_page") {
-            totalPages = Math.max(1, Math.ceil(state.puzzles.length / state.puzzlesPerPage));
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / state.puzzlesPerPage));
         } else if (state.viewMode === "solution_page") {
-            totalPages = Math.max(1, Math.ceil(state.puzzles.length / state.solutionsPerPage));
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / state.solutionsPerPage));
         } else {
-            totalPages = state.puzzles.length;
+            totalPages = state.totalPuzzlesCount;
         }
     } else {
         // Word Search mode
         if (state.viewMode === "book_page") {
-            totalPages = state.puzzles.length;
+            totalPages = state.totalPuzzlesCount;
         } else if (state.viewMode === "solution_page") {
             const spp = state.wsSolutionsPerPage || 4;
-            totalPages = Math.max(1, Math.ceil(state.puzzles.length / spp));
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / spp));
         } else {
-            totalPages = state.puzzles.length;
+            totalPages = state.totalPuzzlesCount;
         }
     }
 
@@ -694,8 +815,8 @@ function renderStage() {
 function renderSudokuStage(ctx, totalPages) {
     if (state.viewMode === "book_page") {
         const startIdx = (state.currentPage - 1) * state.puzzlesPerPage;
-        const endIdx = startIdx + state.puzzlesPerPage;
-        const pSlice = state.puzzles.slice(startIdx, endIdx);
+        const endIdx = Math.min(state.totalPuzzlesCount, startIdx + state.puzzlesPerPage);
+        const pSlice = state.puzzles;
 
         let dateStrings = null;
         let calendarCanvases = null;
@@ -722,7 +843,7 @@ function renderSudokuStage(ctx, totalPages) {
             } else {
                 dateStrings = [];
                 calendarCanvases = [];
-                for (let i = startIdx; i < Math.min(state.puzzles.length, endIdx); i++) {
+                for (let i = startIdx; i < endIdx; i++) {
                     const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
                     dateStrings.push(info.dateStr);
 
@@ -762,9 +883,7 @@ function renderSudokuStage(ctx, totalPages) {
         ctx.drawImage(pageCnv, 0, 0);
 
     } else if (state.viewMode === "solution_page") {
-        const startIdx = (state.currentPage - 1) * state.solutionsPerPage;
-        const endIdx = startIdx + state.solutionsPerPage;
-        const sSlice = state.puzzles.slice(startIdx, endIdx);
+        const sSlice = state.puzzles;
 
         const solCnv = renderSudokuSolutionPageCanvas({
             puzzlesSlice: sSlice,
@@ -781,7 +900,7 @@ function renderSudokuStage(ctx, totalPages) {
 
     } else if (state.viewMode === "single_puzzle") {
         const pIdx = state.currentPage - 1;
-        const p = state.puzzles[pIdx] || state.puzzles[0];
+        const p = state.puzzles[0];
         let dTxt = null;
         if (state.dateEnabled) {
             const dateIdx = (state.dateScope === "per_page")
@@ -806,8 +925,7 @@ function renderSudokuStage(ctx, totalPages) {
         ctx.drawImage(pCnv, 0, 0);
 
     } else if (state.viewMode === "single_solution") {
-        const pIdx = state.currentPage - 1;
-        const p = state.puzzles[pIdx] || state.puzzles[0];
+        const p = state.puzzles[0];
 
         const sCnv = renderSudokuGridCanvas({
             puzzle: p,
@@ -827,7 +945,7 @@ function renderSudokuStage(ctx, totalPages) {
 // Render Word Search Stage Views
 function renderWordSearchStage(ctx, totalPages) {
     const pIdx = state.currentPage - 1;
-    const p = state.puzzles[pIdx] || state.puzzles[0];
+    const p = state.puzzles[0];
     if (!p) return;
 
     let dTxt = null;
@@ -870,15 +988,14 @@ function renderWordSearchStage(ctx, totalPages) {
 
     } else if (state.viewMode === "solution_page") {
         const solPerPage = state.wsSolutionsPerPage || 4;
-        const startIdx = (state.currentPage - 1) * solPerPage;
-        const sSlice = state.puzzles.slice(startIdx, startIdx + solPerPage);
+        const sSlice = state.puzzles;
 
         const solCnv = renderWordSearchSolutionPageCanvas({
             puzzlesSlice: sSlice,
             style: state.wsActiveStyle,
             solutionsPerPage: solPerPage,
             pageNum: state.currentPage,
-            totalPages: Math.ceil(state.puzzles.length / solPerPage),
+            totalPages: Math.ceil(state.totalPuzzlesCount / solPerPage),
             dpi: 150
         });
 
@@ -974,6 +1091,7 @@ function setupEvents() {
             btn.classList.add("active");
             state.viewMode = btn.dataset.view;
             state.currentPage = 1;
+            updatePuzzlesBatch();
             renderStage();
         });
     });
@@ -1001,17 +1119,20 @@ function setupEvents() {
     dom.btnPagePrev.addEventListener("click", () => {
         if (state.currentPage > 1) {
             state.currentPage--;
+            updatePuzzlesBatch();
             renderStage();
         }
     });
 
     dom.btnPageNext.addEventListener("click", () => {
         state.currentPage++;
+        updatePuzzlesBatch();
         renderStage();
     });
 
     dom.stagePageSel.addEventListener("change", (e) => {
         state.currentPage = parseInt(e.target.value, 10);
+        updatePuzzlesBatch();
         renderStage();
     });
 
@@ -1765,10 +1886,96 @@ function setProgress(percent, text) {
     }
 }
 
+// Generate full collection of puzzles on demand (with chunked progress reporting & caching)
+async function getOrBuildFullPuzzlesBatch(onProgress) {
+    const currentHash = state.mode === "sudoku" ? getSudokuConfigHash() : getWsConfigHash();
+
+    if (state.builtPuzzlesCache && state.builtPuzzlesHash === currentHash) {
+        return state.builtPuzzlesCache;
+    }
+
+    if (state.mode === "sudoku") {
+        const total = state.puzzleCount;
+        const allPuzzles = [];
+        const chunkSize = 25;
+
+        for (let i = 0; i < total; i++) {
+            const pSeed = (state.seed + i * 17) % 2147483647;
+            const p = generateSudokuPuzzle({
+                puzzleId: state.startNumber + i,
+                puzzleType: state.sudokuType,
+                difficulty: state.difficulty,
+                seed: pSeed,
+                symmetric: state.symmetric,
+                wordokuWord: state.wordokuWord,
+                titleTemplate: state.titleTemplate
+            });
+            allPuzzles.push(p);
+
+            if (onProgress && (i % chunkSize === 0 || i === total - 1)) {
+                const pct = Math.round(((i + 1) / total) * 100);
+                onProgress(pct, `Generating full Sudoku collection: ${i + 1} / ${total} (${pct}%)...`);
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        state.builtPuzzlesCache = allPuzzles;
+        state.builtPuzzlesHash = currentHash;
+        return allPuzzles;
+    } else {
+        const baseChunks = getWsBaseChunks();
+        const totalNeeded = getWsTotalNeeded(baseChunks);
+        const { rows, cols, fillAlpha } = getWsActiveDimensions();
+
+        const allPuzzles = [];
+        const chunkSize = 20;
+
+        for (let i = 0; i < totalNeeded; i++) {
+            const pNum = (state.wsStartNumber || 1) + i;
+            const item = baseChunks[i % baseChunks.length];
+            const themeTitle = (totalNeeded > baseChunks.length && baseChunks.length > 1)
+                ? `${item.theme} #${Math.floor(i / baseChunks.length) + 1}`
+                : (baseChunks.length === 1 && totalNeeded > 1
+                    ? `${item.theme} #${pNum}`
+                    : item.theme);
+
+            const pTitle = state.wsTitleTemplate
+                ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
+                : themeTitle;
+
+            const puzzle = generateWordSearchPuzzle({
+                words: item.words,
+                width: cols,
+                height: rows,
+                difficulty: state.wsDifficulty,
+                language: state.wsLanguage,
+                title: pTitle,
+                fillAlphabet: fillAlpha,
+                seed: (state.wsSeed || 42) + i * 19
+            });
+
+            puzzle.puzzleId = pNum;
+            puzzle.theme = item.theme;
+            puzzle.difficultyLabel = state.wsDifficulty.toUpperCase();
+            allPuzzles.push(puzzle);
+
+            if (onProgress && (i % chunkSize === 0 || i === totalNeeded - 1)) {
+                const pct = Math.round(((i + 1) / totalNeeded) * 100);
+                onProgress(pct, `Generating full Word Search collection: ${i + 1} / ${totalNeeded} (${pct}%)...`);
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        state.builtPuzzlesCache = allPuzzles;
+        state.builtPuzzlesHash = currentHash;
+        return allPuzzles;
+    }
+}
+
 // Helper to render images for Canva Bulk cell embedding
-async function renderCanvaBulkImages(onProgress) {
-    const total = state.puzzles.length;
-    const totalPages = Math.ceil(total / state.puzzlesPerPage);
+async function renderCanvaBulkImages(puzzles, onProgress) {
+    const total = puzzles.length;
+    const totalPages = Math.ceil(total / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
     const gridImages = [];
     const solutionImages = [];
     const calendarImages = [];
@@ -1792,12 +1999,12 @@ async function renderCanvaBulkImages(onProgress) {
     }
 
     for (let i = 0; i < total; i++) {
-        const p = state.puzzles[i];
+        const p = puzzles[i];
         let dTxt = null;
 
         if (state.dateEnabled) {
             const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / state.puzzlesPerPage)
+                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
                 : i;
             const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
             dTxt = info.dateStr;
@@ -1874,18 +2081,22 @@ async function renderCanvaBulkImages(onProgress) {
 // Handle Canva Bulk Excel Export (with REAL embedded floating images)
 async function handleExportCanva() {
     try {
-        setProgress(5, "Rendering puzzle images for Canva Bulk cell embedding...");
+        setProgress(2, "Generating full puzzle collection for export...");
+        const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
+
+        setProgress(15, "Rendering puzzle images for Canva Bulk cell embedding...");
         const { gridImages, solutionImages, calendarImages, pageCalendarImages } = await renderCanvaBulkImages(
-            pct => setProgress(pct, `Embedding images into Canva Excel: ${pct}%...`)
+            fullPuzzles,
+            pct => setProgress(15 + Math.round(pct * 0.55), `Embedding images into Canva Excel: ${pct}%...`)
         );
 
-        setProgress(70, "Building Canva Bulk Excel workbook with embedded pictures...");
-        const totalPuzzles = state.puzzles.length;
-        const totalPages = Math.ceil(totalPuzzles / state.puzzlesPerPage);
+        setProgress(72, "Building Canva Bulk Excel workbook with embedded pictures...");
+        const totalPuzzles = fullPuzzles.length;
+        const totalPages = Math.ceil(totalPuzzles / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
 
-        const dateStrings = state.puzzles.map((_, i) => {
+        const dateStrings = fullPuzzles.map((_, i) => {
             const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / state.puzzlesPerPage)
+                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
                 : i;
             return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
         });
@@ -1905,7 +2116,7 @@ async function handleExportCanva() {
 
         if (state.mode === "sudoku") {
             result = await buildCanvaSudokuExcel({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateScope: state.dateScope,
@@ -1920,7 +2131,7 @@ async function handleExportCanva() {
             });
         } else {
             result = await buildCanvaWordSearchExcel({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
@@ -1969,13 +2180,18 @@ async function handleExportCanva() {
 }
 
 // Handle Solutions Excel Export
-function handleExportSolutions() {
+async function handleExportSolutions() {
     try {
-        const buffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
+        setProgress(5, "Generating full puzzle collection for solutions export...");
+        const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
+        setProgress(85, "Building solutions Excel spreadsheet...");
+        const buffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const filename = state.mode === "sudoku" ? "sudoku_solutions.xlsx" : "wordsearch_solutions.xlsx";
         saveAs(blob, filename);
+        setTimeout(() => setProgress(null), 1000);
     } catch (err) {
+        setProgress(null);
         alert(`Export failed: ${err.message}`);
     }
 }
@@ -1983,15 +2199,17 @@ function handleExportSolutions() {
 // Handle KDP Print PDF Export
 async function handleExportPdf() {
     try {
-        setProgress(5, "Building print-ready KDP PDF book...");
-        const totalPuzzles = state.puzzles.length;
-        const totalPages = Math.ceil(totalPuzzles / state.puzzlesPerPage);
+        setProgress(2, "Generating full puzzle collection for PDF book...");
+        const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
+        setProgress(15, "Building print-ready KDP PDF book...");
+        const totalPuzzles = fullPuzzles.length;
+        const totalPages = Math.ceil(totalPuzzles / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
 
-        const dateStrings = state.puzzles.map((_, i) =>
+        const dateStrings = fullPuzzles.map((_, i) =>
             state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
         );
 
-        const calendarCanvases = state.puzzles.map((_, i) => {
+        const calendarCanvases = fullPuzzles.map((_, i) => {
             if (state.dateEnabled && state.dateMode === "calendar_image") {
                 const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
                 return renderMiniMonthCalendarCanvas({
@@ -2034,7 +2252,7 @@ async function handleExportPdf() {
 
         if (state.mode === "sudoku") {
             pdfBuffer = await buildSudokuKdpPdf({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 style: state.activeStyle,
                 puzzlesPerPage: state.puzzlesPerPage,
                 solutionsPerPage: state.solutionsPerPage,
@@ -2045,12 +2263,12 @@ async function handleExportPdf() {
                 calendarCanvases,
                 pageDateStrings: state.dateEnabled ? pageDateStrings : [],
                 pageCalendarCanvases,
-                onProgress: (p) => setProgress(p, `Rendering PDF book pages: ${p}%`)
+                onProgress: (p) => setProgress(15 + Math.round(p * 0.8), `Rendering PDF book pages: ${p}%`)
             });
             filename = "sudoku_kdp_interior.pdf";
         } else {
             pdfBuffer = await buildWordSearchKdpPdf({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 style: state.wsActiveStyle,
                 solutionsPerPage: state.wsSolutionsPerPage || 4,
                 trimChoice: state.wsTrimChoice,
@@ -2059,7 +2277,7 @@ async function handleExportPdf() {
                 wordColumns: state.wsWordCols,
                 showWordBank: state.wsShowWordBank,
                 wordBankTitle: LANGUAGE_CONFIGS[state.wsLanguage]?.word_bank_title,
-                onProgress: (p) => setProgress(p, `Rendering PDF book pages: ${p}%`)
+                onProgress: (p) => setProgress(15 + Math.round(p * 0.8), `Rendering PDF book pages: ${p}%`)
             });
             filename = "wordsearch_kdp_interior.pdf";
         }
@@ -2081,12 +2299,15 @@ async function handleExportZip() {
     }
 
     try {
+        setProgress(2, "Generating full puzzle collection for ZIP bundle...");
+        const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
+
         const zip = new window.JSZip();
         const imgFolder = zip.folder("images");
-        const total = state.puzzles.length;
-        const totalPages = Math.ceil(total / state.puzzlesPerPage);
+        const total = fullPuzzles.length;
+        const totalPages = Math.ceil(total / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
 
-        setProgress(1, `Rendering 300 DPI high-resolution puzzle images: 0 / ${total}`);
+        setProgress(15, `Rendering 300 DPI high-resolution puzzle images: 0 / ${total}`);
 
         const canvasToBlob = (canvas) => new Promise(resolve => canvas.toBlob(resolve, "image/png"));
 
@@ -2123,7 +2344,7 @@ async function handleExportZip() {
         }
 
         for (let i = 0; i < total; i++) {
-            const p = state.puzzles[i];
+            const p = fullPuzzles[i];
             const pPad = String(i + 1).padStart(3, "0");
 
             let dTxt = null;
@@ -2131,7 +2352,7 @@ async function handleExportZip() {
 
             if (state.dateEnabled) {
                 const dateIdx = (state.dateScope === "per_page")
-                    ? Math.floor(i / state.puzzlesPerPage)
+                    ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
                     : i;
                 const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
                 dTxt = info.dateStr;
@@ -2211,17 +2432,17 @@ async function handleExportZip() {
             }
 
             if (i % 5 === 0 || i === total - 1) {
-                const pct = Math.round(((i + 1) / total) * 70);
+                const pct = 15 + Math.round(((i + 1) / total) * 55);
                 setProgress(pct, `Rendering 300 DPI high-res images: ${i + 1} of ${total}...`);
                 await new Promise(r => setTimeout(r, 0));
             }
         }
 
         // Add Canva Excel with embedded pictures
-        setProgress(75, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
-        const dateStrings = state.puzzles.map((_, i) => {
+        setProgress(72, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
+        const dateStrings = fullPuzzles.map((_, i) => {
             const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / state.puzzlesPerPage)
+                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
                 : i;
             return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
         });
@@ -2232,7 +2453,7 @@ async function handleExportZip() {
 
         if (state.mode === "sudoku") {
             const canvaResult = await buildCanvaSudokuExcel({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
                 dateScope: state.dateScope,
@@ -2264,12 +2485,12 @@ async function handleExportZip() {
             }
 
             if (!state.sameExcel) {
-                const solBuffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
+                const solBuffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
                 zip.file("sudoku_solutions.xlsx", solBuffer);
             }
         } else {
             const canvaResult = await buildCanvaWordSearchExcel({
-                puzzles: state.puzzles,
+                puzzles: fullPuzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
@@ -2297,7 +2518,7 @@ async function handleExportZip() {
             }
 
             if (!state.wsSameExcel) {
-                const solBuffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
+                const solBuffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
                 zip.file("wordsearch_solutions.xlsx", solBuffer);
             }
         }
