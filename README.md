@@ -23,6 +23,9 @@ Runs completely in the browser with **zero backend dependencies**, making it fre
 
 ### 📅 3. Calendar & Date Scheduling System
 - **Year Selector**: 2025, 2026, 2027, 2028, 2029, 2030 with automatic leap-year handling (365 / 366 days).
+- **Date Assignment Scope**:
+  - **1 Date Per Game**: Each puzzle slot advances by 1 calendar day.
+  - **1 Date Per Page**: All puzzle slots on a page share 1 unified day/page header.
 - **Progression Modes**:
   - **Daily**: 1 Day / Puzzle (365 puzzles for a full "A-Puzzle-A-Day" 365-day book).
   - **Monthly**: 1 Month / Puzzle (12 or 24 puzzles per year).
@@ -35,30 +38,10 @@ Runs completely in the browser with **zero backend dependencies**, making it fre
   - **7 Color Themes**: Modern Emerald, Classic Onyx, Royal Blue, Sunset Coral, Forest Sage, Warm Terracotta, Minimalist Slate.
 
 ### 📦 4. Commercial Export Formats
-1. **Canva Bulk Create Excel (`.xlsx`)**: Pre-formatted multi-column spreadsheet ready for Canva Bulk Create with image references, dates, titles, and solution mappings.
+1. **Canva Bulk Create Excel (`.xlsx`)**: Pre-formatted multi-column spreadsheet with embedded 300 DPI images inside cells, ready for Canva Bulk Create with image references, dates, titles, and solution mappings.
 2. **KDP Print-Ready PDF (`.pdf`)**: Formatted interior book PDF with margin safety, section dividers, and back-of-book answer keys. Supports 8.5×11", 6×9", 8.5×8.5", and 8×10" trim sizes.
 3. **Complete 300 DPI ZIP Bundle (`.zip`)**: Individual high-resolution PNGs of all grids, solution answer keys, calendar cards, and the Canva spreadsheet in one compressed package.
 4. **Solutions Only Excel (`.xlsx`)**: Standalone answer key index.
-
----
-
-## 📂 Project Architecture
-
-```
-htmljs-activity-studio/
-├── index.html               # Main studio workspace & UI layout
-├── css/
-│   └── style.css            # Modern design system (Dark/Light mode, Emerald palette)
-├── js/
-│   ├── app.js               # Reactive studio state controller & event coordinator
-│   ├── sudoku_engine.js     # Backtracking solver & unique Sudoku generator
-│   ├── wordsearch_engine.js # 8-way word placement & grid generator
-│   ├── calendar_builder.js  # Date progression calculator & 300 DPI calendar card renderer
-│   ├── canvas_renderer.js   # 300 DPI raster canvas renderer for grids, pages & solutions
-│   ├── excel_exporter.js    # SheetJS Canva Bulk Create Excel builder
-│   └── pdf_exporter.js      # jsPDF interior book compiler
-└── README.md                # Deployment and user guide
-```
 
 ---
 
@@ -66,16 +49,8 @@ htmljs-activity-studio/
 
 Cloudflare Pages offers unlimited bandwidth, instant global CDN delivery, and 100% free hosting for static client-side sites.
 
-### Step 1: Push this folder to a new GitHub repository
-Open PowerShell or Terminal in this folder:
-```bash
-git init
-git add .
-git commit -m "feat: initial commit of KDP Activity Studio"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/htmljs-activity-studio.git
-git push -u origin main
-```
+### Repository:
+**[https://github.com/NE-NOORE-Maps/htmljs-activity-studio](https://github.com/NE-NOORE-Maps/htmljs-activity-studio)**
 
 ### Step 2: Connect to Cloudflare Pages
 1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com/).
