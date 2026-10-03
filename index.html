@@ -148,6 +148,26 @@
                                 <span class="slider-switch"></span>
                             </label>
                         </div>
+
+                        <div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
+                            <label for="sdk-canva-batch-preset">
+                                Canva Bulk Batch Split
+                                <span class="hint" id="sdk-canva-batch-badge">100 / batch</span>
+                            </label>
+                            <div class="form-row-2">
+                                <select id="sdk-canva-batch-preset">
+                                    <option value="100" selected>100 pages / batch (Canva Standard)</option>
+                                    <option value="50">50 pages / batch (Light)</option>
+                                    <option value="200">200 pages / batch</option>
+                                    <option value="custom">Custom batch size...</option>
+                                    <option value="0">No Split (Single File)</option>
+                                </select>
+                                <input type="number" id="sdk-canva-batch-input" min="10" max="1000" step="10" value="100" style="display:none;" placeholder="Pages per file">
+                            </div>
+                            <div class="field-help" id="sdk-canva-batch-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">
+                                📦 Canva has a 100-page limit per design. Large books automatically download as an ordered ZIP of batches.
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Word Search Volume Section -->
@@ -242,6 +262,26 @@
                                 <input type="checkbox" id="ws-target-count-tog">
                                 <span class="slider-switch"></span>
                             </label>
+                        </div>
+
+                        <div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
+                            <label for="ws-canva-batch-preset">
+                                Canva Bulk Batch Split
+                                <span class="hint" id="ws-canva-batch-badge">100 / batch</span>
+                            </label>
+                            <div class="form-row-2">
+                                <select id="ws-canva-batch-preset">
+                                    <option value="100" selected>100 pages / batch (Canva Standard)</option>
+                                    <option value="50">50 pages / batch (Light)</option>
+                                    <option value="200">200 pages / batch</option>
+                                    <option value="custom">Custom batch size...</option>
+                                    <option value="0">No Split (Single File)</option>
+                                </select>
+                                <input type="number" id="ws-canva-batch-input" min="10" max="1000" step="10" value="100" style="display:none;" placeholder="Pages per file">
+                            </div>
+                            <div class="field-help" id="ws-canva-batch-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">
+                                📦 Canva has a 100-page limit per design. Large books automatically download as an ordered ZIP of batches.
+                            </div>
                         </div>
                     </div>
                 </div>

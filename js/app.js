@@ -44,7 +44,8 @@ import {
 import {
     buildCanvaSudokuExcel,
     buildCanvaWordSearchExcel,
-    buildSolutionsOnlyExcel
+    buildSolutionsOnlyExcel,
+    generateCanvaInstructions
 } from "./excel_exporter.js";
 
 import {
@@ -67,6 +68,7 @@ const state = {
     trimChoice: "8.5 x 11 inches (Letter)",
     sameExcel: true,
     includeInstructions: true,
+    canvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
 
     // Volume & Layout (Word Search)
     wsPuzzleCount: 12,
@@ -77,6 +79,7 @@ const state = {
     wsSameExcel: true,
     wsShowWordBank: true,
     wsWordCols: 3,
+    wsCanvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
 
     // Date & Calendar
     dateEnabled: false,
@@ -152,6 +155,10 @@ const dom = {
     trimChoiceSel: document.getElementById("sdk-trim-choice"),
     sameExcelTog: document.getElementById("sdk-same-excel-tog"),
     instructionsTog: document.getElementById("sdk-instructions-tog"),
+    sdkCanvaBatchPreset: document.getElementById("sdk-canva-batch-preset"),
+    sdkCanvaBatchBadge: document.getElementById("sdk-canva-batch-badge"),
+    sdkCanvaBatchInput: document.getElementById("sdk-canva-batch-input"),
+    sdkCanvaBatchHelp: document.getElementById("sdk-canva-batch-help"),
 
     // Word Search Volume Controls
     wsCountInput: document.getElementById("ws-count-input"),
@@ -164,6 +171,10 @@ const dom = {
     wsShowBankTog: document.getElementById("ws-show-bank-tog"),
     wsSameExcelTog: document.getElementById("ws-same-excel-tog"),
     wsTargetCountTog: document.getElementById("ws-target-count-tog"),
+    wsCanvaBatchPreset: document.getElementById("ws-canva-batch-preset"),
+    wsCanvaBatchBadge: document.getElementById("ws-canva-batch-badge"),
+    wsCanvaBatchInput: document.getElementById("ws-canva-batch-input"),
+    wsCanvaBatchHelp: document.getElementById("ws-canva-batch-help"),
 
     // Date Controls
     dateEnabledTog: document.getElementById("sdk-date-enabled-tog"),
@@ -543,7 +554,12 @@ function updateMetrics() {
         dom.metricClues.textContent = state.puzzles[0] ? state.puzzles[0].cluesCount : "-";
         dom.metricGamesPage.textContent = state.puzzlesPerPage;
 
-        dom.exportSummary.textContent = `${state.puzzleCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page · 300 DPI Commercial Print Ready`;
+        const totalPages = Math.ceil(state.puzzles.length / (state.puzzlesPerPage || 1));
+        const effectiveBatch = (state.canvaBatchSize && state.canvaBatchSize > 0) ? state.canvaBatchSize : totalPages;
+        const batches = Math.ceil(totalPages / effectiveBatch);
+        const batchInfo = (batches > 1) ? ` · Canva: ${batches} batches (${state.canvaBatchSize}p/file)` : "";
+
+        dom.exportSummary.textContent = `${state.puzzleCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page${batchInfo} · 300 DPI Commercial Print Ready`;
     } else {
         const langShort = (state.wsLanguage || "English").split(" ")[0];
         dom.metricType.textContent = `Word Search (${langShort})`;
@@ -552,7 +568,41 @@ function updateMetrics() {
         dom.metricClues.textContent = state.puzzles[0] && state.puzzles[0].placedWords ? state.puzzles[0].placedWords.length : "-";
         dom.metricGamesPage.textContent = `1 (${state.wsWordCols} cols)`;
 
-        dom.exportSummary.textContent = `${state.puzzles.length} Word Searches · ${state.wsTrimChoice} · 300 DPI Commercial Print Ready`;
+        const totalPages = state.puzzles.length;
+        const effectiveBatch = (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0) ? state.wsCanvaBatchSize : totalPages;
+        const batches = Math.ceil(totalPages / effectiveBatch);
+        const batchInfo = (batches > 1) ? ` · Canva: ${batches} batches (${state.wsCanvaBatchSize}p/file)` : "";
+
+        dom.exportSummary.textContent = `${state.puzzles.length} Word Searches · ${state.wsTrimChoice}${batchInfo} · 300 DPI Commercial Print Ready`;
+    }
+
+    updateCanvaBatchBadges();
+}
+
+function updateCanvaBatchBadges() {
+    if (dom.sdkCanvaBatchBadge) {
+        const totalPuzzles = state.mode === "sudoku" ? state.puzzles.length : state.puzzleCount;
+        const totalPages = Math.ceil(totalPuzzles / (state.puzzlesPerPage || 1));
+        if (!state.canvaBatchSize || state.canvaBatchSize <= 0) {
+            dom.sdkCanvaBatchBadge.textContent = `No split (${totalPages} pages)`;
+        } else {
+            const batches = Math.ceil(totalPages / state.canvaBatchSize);
+            dom.sdkCanvaBatchBadge.textContent = batches > 1
+                ? `${state.canvaBatchSize} / batch (${batches} files)`
+                : `${state.canvaBatchSize} / batch (1 file)`;
+        }
+    }
+
+    if (dom.wsCanvaBatchBadge) {
+        const totalPages = state.mode === "wordsearch" ? state.puzzles.length : (state.wsPuzzleCount || 12);
+        if (!state.wsCanvaBatchSize || state.wsCanvaBatchSize <= 0) {
+            dom.wsCanvaBatchBadge.textContent = `No split (${totalPages} pages)`;
+        } else {
+            const batches = Math.ceil(totalPages / state.wsCanvaBatchSize);
+            dom.wsCanvaBatchBadge.textContent = batches > 1
+                ? `${state.wsCanvaBatchSize} / batch (${batches} files)`
+                : `${state.wsCanvaBatchSize} / batch (1 file)`;
+        }
     }
 }
 
@@ -1016,6 +1066,29 @@ function setupEvents() {
         if (state.mode === "sudoku") renderStage();
     });
 
+    if (dom.sdkCanvaBatchPreset) {
+        dom.sdkCanvaBatchPreset.addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val === "custom") {
+                if (dom.sdkCanvaBatchInput) {
+                    dom.sdkCanvaBatchInput.style.display = "block";
+                    state.canvaBatchSize = Math.max(1, parseInt(dom.sdkCanvaBatchInput.value, 10) || 100);
+                }
+            } else {
+                if (dom.sdkCanvaBatchInput) dom.sdkCanvaBatchInput.style.display = "none";
+                state.canvaBatchSize = parseInt(val, 10);
+            }
+            updateMetrics();
+        });
+    }
+
+    if (dom.sdkCanvaBatchInput) {
+        dom.sdkCanvaBatchInput.addEventListener("input", (e) => {
+            state.canvaBatchSize = Math.max(1, parseInt(e.target.value, 10) || 100);
+            updateMetrics();
+        });
+    }
+
     // ==========================================
     // Word Search Volume Controls
     // ==========================================
@@ -1087,6 +1160,29 @@ function setupEvents() {
         dom.wsTargetCountTog.addEventListener("change", (e) => {
             state.wsTargetCountEnforced = e.target.checked;
             if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsCanvaBatchPreset) {
+        dom.wsCanvaBatchPreset.addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val === "custom") {
+                if (dom.wsCanvaBatchInput) {
+                    dom.wsCanvaBatchInput.style.display = "block";
+                    state.wsCanvaBatchSize = Math.max(1, parseInt(dom.wsCanvaBatchInput.value, 10) || 100);
+                }
+            } else {
+                if (dom.wsCanvaBatchInput) dom.wsCanvaBatchInput.style.display = "none";
+                state.wsCanvaBatchSize = parseInt(val, 10);
+            }
+            updateMetrics();
+        });
+    }
+
+    if (dom.wsCanvaBatchInput) {
+        dom.wsCanvaBatchInput.addEventListener("input", (e) => {
+            state.wsCanvaBatchSize = Math.max(1, parseInt(e.target.value, 10) || 100);
+            updateMetrics();
         });
     }
 
@@ -1802,11 +1898,13 @@ async function handleExportCanva() {
             }
         }
 
-        let buffer;
-        let filename;
+        let result;
+        const batchSize = state.mode === "sudoku"
+            ? (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0)
+            : (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0);
 
         if (state.mode === "sudoku") {
-            buffer = await buildCanvaSudokuExcel({
+            result = await buildCanvaSudokuExcel({
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
@@ -1817,25 +1915,52 @@ async function handleExportCanva() {
                 gridImages,
                 solutionImages,
                 calendarImages,
-                pageCalendarImages
+                pageCalendarImages,
+                batchSize
             });
-            filename = "sudoku_canva_bulk.xlsx";
         } else {
-            buffer = await buildCanvaWordSearchExcel({
+            result = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
-                calendarImages
+                calendarImages,
+                batchSize
             });
-            filename = "wordsearch_canva_bulk.xlsx";
         }
 
-        setProgress(95, "Downloading Canva Bulk workbook...");
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        saveAs(blob, filename);
+        if (result.isSplit && result.files.length > 1) {
+            setProgress(90, `Packaging ${result.files.length} Canva batch files into ZIP...`);
+            const zip = new window.JSZip();
+            result.files.forEach(f => {
+                zip.file(f.filename, f.buffer);
+            });
+            const instructions = generateCanvaInstructions({
+                mode: state.mode,
+                totalPages: result.totalPages,
+                batchSize: batchSize || 100,
+                numBatches: result.totalBatches,
+                puzzlesPerPage: state.mode === "sudoku" ? state.puzzlesPerPage : 1
+            });
+            zip.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
+
+            const zipBlob = await zip.generateAsync({
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: { level: 6 }
+            });
+            const zipName = state.mode === "sudoku"
+                ? `sudoku_canva_bulk_batches_${result.totalPages}_pages.zip`
+                : `wordsearch_canva_bulk_batches_${result.totalPages}_pages.zip`;
+            saveAs(zipBlob, zipName);
+        } else {
+            setProgress(95, "Downloading Canva Bulk workbook...");
+            const singleFile = result.files[0];
+            const blob = new Blob([singleFile.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, singleFile.filename);
+        }
         setTimeout(() => setProgress(null), 1000);
     } catch (err) {
         setProgress(null);
@@ -2101,8 +2226,12 @@ async function handleExportZip() {
             return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
         });
 
+        const batchSize = state.mode === "sudoku"
+            ? (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0)
+            : (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0);
+
         if (state.mode === "sudoku") {
-            const canvaBuffer = await buildCanvaSudokuExcel({
+            const canvaResult = await buildCanvaSudokuExcel({
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
@@ -2113,25 +2242,59 @@ async function handleExportZip() {
                 gridImages,
                 solutionImages,
                 calendarImages,
-                pageCalendarImages
+                pageCalendarImages,
+                batchSize
             });
-            zip.file("sudoku_canva_bulk.xlsx", canvaBuffer);
+
+            if (canvaResult.isSplit && canvaResult.files.length > 1) {
+                const canvaFolder = zip.folder("canva_batches");
+                canvaResult.files.forEach(f => {
+                    canvaFolder.file(f.filename, f.buffer);
+                });
+                const instructions = generateCanvaInstructions({
+                    mode: "sudoku",
+                    totalPages: canvaResult.totalPages,
+                    batchSize: batchSize || 100,
+                    numBatches: canvaResult.totalBatches,
+                    puzzlesPerPage: state.puzzlesPerPage
+                });
+                canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
+            } else {
+                zip.file("sudoku_canva_bulk.xlsx", canvaResult.files[0].buffer);
+            }
 
             if (!state.sameExcel) {
                 const solBuffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
                 zip.file("sudoku_solutions.xlsx", solBuffer);
             }
         } else {
-            const canvaBuffer = await buildCanvaWordSearchExcel({
+            const canvaResult = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
-                calendarImages
+                calendarImages,
+                batchSize
             });
-            zip.file("wordsearch_canva_bulk.xlsx", canvaBuffer);
+
+            if (canvaResult.isSplit && canvaResult.files.length > 1) {
+                const canvaFolder = zip.folder("canva_batches");
+                canvaResult.files.forEach(f => {
+                    canvaFolder.file(f.filename, f.buffer);
+                });
+                const instructions = generateCanvaInstructions({
+                    mode: "wordsearch",
+                    totalPages: canvaResult.totalPages,
+                    batchSize: batchSize || 100,
+                    numBatches: canvaResult.totalBatches,
+                    puzzlesPerPage: 1
+                });
+                canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
+            } else {
+                zip.file("wordsearch_canva_bulk.xlsx", canvaResult.files[0].buffer);
+            }
 
             if (!state.wsSameExcel) {
                 const solBuffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
