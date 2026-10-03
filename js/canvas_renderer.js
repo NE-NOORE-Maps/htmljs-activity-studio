@@ -335,8 +335,11 @@ export function renderSudokuBookPageCanvas({
     totalPages = 1,
     dpi = 150,
     includeInstructions = true,
+    dateScope = "per_game",
     dateStrings = null,
-    calendarCanvases = null
+    calendarCanvases = null,
+    pageDateText = null,
+    pageCalendarCanvas = null
 } = {}) {
     const w = Math.round(8.5 * dpi);
     const h = Math.round(11.0 * dpi);
@@ -355,10 +358,14 @@ export function renderSudokuBookPageCanvas({
     const fontLblPx = Math.max(9, Math.round((11.0 / 72.0) * dpi));
     const fontInstPx = Math.max(8, Math.round((9.5 / 72.0) * dpi));
 
+    const pageDate = pageDateText || (dateStrings && dateStrings[0] ? dateStrings[0] : null);
+    const pageCal = pageCalendarCanvas || (calendarCanvases && calendarCanvases[0] ? calendarCanvases[0] : null);
+    const isPerPageScope = (dateScope === "per_page");
+
     if (puzzlesPerPage === 1 && puzzlesSlice.length > 0) {
         const p = puzzlesSlice[0];
-        const dTxt = dateStrings && dateStrings[0] ? dateStrings[0] : null;
-        const calCnv = calendarCanvases && calendarCanvases[0] ? calendarCanvases[0] : null;
+        const dTxt = isPerPageScope ? pageDate : (dateStrings && dateStrings[0] ? dateStrings[0] : null);
+        const calCnv = isPerPageScope ? pageCal : (calendarCanvases && calendarCanvases[0] ? calendarCanvases[0] : null);
 
         let topOffset = 100;
 
@@ -419,122 +426,339 @@ export function renderSudokuBookPageCanvas({
         ctx.drawImage(pCanvas, ox, oy, avail, avail);
 
     } else if (puzzlesPerPage === 2) {
-        const cols = 1, rows = 2;
-        const marginX = 60, marginY = 45;
-        const cellW = w - 2 * marginX;
-        const cellH = (h - marginY - 60) / rows;
+        if (isPerPageScope && (pageDate || pageCal)) {
+            // UNIFIED 1 DATE PER PAGE: Single top header card for the page
+            let topHeaderHeight = 90;
 
-        puzzlesSlice.slice(0, 2).forEach((p, idx) => {
-            const cy = marginY + idx * cellH;
-            const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
-            const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
-
-            if (calCnv) {
-                const calW = Math.round(cellW * 0.22);
+            if (pageCal) {
+                const calW = Math.round(w * 0.22);
                 const calH = Math.round(calW * 0.80);
-                ctx.drawImage(calCnv, w - marginX - calW, cy + 10, calW, calH);
+                ctx.drawImage(pageCal, w - 60 - calW, 28, calW, calH);
 
                 ctx.textAlign = "left";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                const lbl = dTxt ? `${dTxt} · ${p.title} (${p.difficultyLabel})` : `${p.title} · ${p.difficultyLabel} ${p.difficultyStars}`;
-                ctx.fillText(lbl, marginX + 10, cy + 22);
+                ctx.font = `bold ${Math.round(fontTitlePx * 0.95)}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate || `Daily Sudoku #${pageNum}`, 60, 50);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, 60, 78);
+
+                if (includeInstructions) {
+                    ctx.font = `${fontInstPx}px "Plus Jakarta Sans", sans-serif`;
+                    ctx.fillStyle = "#6E7D76";
+                    ctx.fillText("Fill in each grid so every row, column, and 3×3 block contains numbers 1 to 9.", 60, 102);
+                }
+
+                topHeaderHeight = Math.max(105, 28 + calH + 15);
             } else {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                const lbl = dTxt ? `${dTxt} · ${p.title} · ${p.difficultyLabel} ${p.difficultyStars}` : `${p.title} · ${p.difficultyLabel} ${p.difficultyStars}`;
-                ctx.fillText(lbl, w / 2, cy + 18);
+                ctx.font = `bold ${fontTitlePx}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate, w / 2, 42);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, w / 2, 70);
+
+                if (includeInstructions) {
+                    ctx.font = `${fontInstPx}px "Plus Jakarta Sans", sans-serif`;
+                    ctx.fillStyle = "#6E7D76";
+                    ctx.fillText("Fill in each grid so every row, column, and 3×3 block contains numbers 1 to 9.", w / 2, 96);
+                    topHeaderHeight = 118;
+                } else {
+                    topHeaderHeight = 88;
+                }
             }
 
-            const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
-            const avail = Math.min(cellW - 40, cellH - 45);
-            const ox = (w - avail) / 2;
-            const oy = cy + 30 + (cellH - 45 - avail) / 2;
-            ctx.drawImage(pCanvas, ox, oy, avail, avail);
-        });
+            // Divider rule
+            ctx.strokeStyle = "#E2E8F0";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(60, topHeaderHeight - 6);
+            ctx.lineTo(w - 60, topHeaderHeight - 6);
+            ctx.stroke();
+
+            const marginX = 60;
+            const availH = h - topHeaderHeight - 50;
+            const cellW = w - 2 * marginX;
+            const cellH = availH / 2;
+
+            puzzlesSlice.slice(0, 2).forEach((p, idx) => {
+                const cy = topHeaderHeight + idx * cellH;
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#14251F";
+                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                ctx.fillText(`${p.title} · ${p.difficultyLabel} ${p.difficultyStars}`, w / 2, cy + 18);
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
+                const avail = Math.min(cellW - 40, cellH - 42);
+                const ox = (w - avail) / 2;
+                const oy = cy + 28 + (cellH - 42 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+
+        } else {
+            // LINKED TO GAMES: Each slot has its own date / calendar card
+            const cols = 1, rows = 2;
+            const marginX = 60, marginY = 45;
+            const cellW = w - 2 * marginX;
+            const cellH = (h - marginY - 60) / rows;
+
+            puzzlesSlice.slice(0, 2).forEach((p, idx) => {
+                const cy = marginY + idx * cellH;
+                const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
+                const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
+
+                if (calCnv) {
+                    const calW = Math.round(cellW * 0.22);
+                    const calH = Math.round(calW * 0.80);
+                    ctx.drawImage(calCnv, w - marginX - calW, cy + 10, calW, calH);
+
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    const lbl = dTxt ? `${dTxt} · ${p.title} (${p.difficultyLabel})` : `${p.title} · ${p.difficultyLabel} ${p.difficultyStars}`;
+                    ctx.fillText(lbl, marginX + 10, cy + 22);
+                } else {
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    const lbl = dTxt ? `${dTxt} · ${p.title} · ${p.difficultyLabel} ${p.difficultyStars}` : `${p.title} · ${p.difficultyLabel} ${p.difficultyStars}`;
+                    ctx.fillText(lbl, w / 2, cy + 18);
+                }
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
+                const avail = Math.min(cellW - 40, cellH - 45);
+                const ox = (w - avail) / 2;
+                const oy = cy + 30 + (cellH - 45 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+        }
 
     } else if (puzzlesPerPage === 4) {
-        const cols = 2, rows = 2;
-        const marginX = 50, marginY = 40;
-        const cellW = (w - 2 * marginX) / cols;
-        const cellH = (h - marginY - 50) / rows;
+        if (isPerPageScope && (pageDate || pageCal)) {
+            // UNIFIED 1 DATE PER PAGE (4 puzzles / page)
+            let topHeaderHeight = 75;
 
-        puzzlesSlice.slice(0, 4).forEach((p, idx) => {
-            const col = idx % cols;
-            const row = Math.floor(idx / cols);
-            const cx = marginX + col * cellW;
-            const cy = marginY + row * cellH;
-
-            const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
-            const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
-
-            if (calCnv) {
-                const calW = Math.round(cellW * 0.24);
+            if (pageCal) {
+                const calW = Math.round(w * 0.18);
                 const calH = Math.round(calW * 0.80);
-                ctx.drawImage(calCnv, cx + cellW - calW - 6, cy + 4, calW, calH);
+                ctx.drawImage(pageCal, w - 50 - calW, 22, calW, calH);
 
                 ctx.textAlign = "left";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                ctx.fillText(dTxt ? `${dTxt} #${p.puzzleId}` : `${p.title} (${p.difficultyLabel})`, cx + 10, cy + 16);
+                ctx.font = `bold ${Math.round(fontTitlePx * 0.88)}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate || `Daily Sudoku #${pageNum}`, 50, 40);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, 50, 66);
+
+                topHeaderHeight = Math.max(88, 22 + calH + 12);
             } else {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                ctx.fillText(dTxt ? `${dTxt} · ${p.title}` : `${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 15);
+                ctx.font = `bold ${Math.round(fontTitlePx * 0.90)}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate, w / 2, 36);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, w / 2, 62);
+                topHeaderHeight = 80;
             }
 
-            const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
-            const avail = Math.min(cellW - 28, cellH - 38);
-            const ox = cx + (cellW - avail) / 2;
-            const oy = cy + 26 + (cellH - 38 - avail) / 2;
-            ctx.drawImage(pCanvas, ox, oy, avail, avail);
-        });
+            // Divider rule
+            ctx.strokeStyle = "#E2E8F0";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(50, topHeaderHeight - 6);
+            ctx.lineTo(w - 50, topHeaderHeight - 6);
+            ctx.stroke();
+
+            const cols = 2, rows = 2;
+            const marginX = 50;
+            const availH = h - topHeaderHeight - 45;
+            const cellW = (w - 2 * marginX) / cols;
+            const cellH = availH / rows;
+
+            puzzlesSlice.slice(0, 4).forEach((p, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const cx = marginX + col * cellW;
+                const cy = topHeaderHeight + row * cellH;
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#14251F";
+                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                ctx.fillText(`${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 14);
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 9.0, dpi, solution: false });
+                const avail = Math.min(cellW - 24, cellH - 34);
+                const ox = cx + (cellW - avail) / 2;
+                const oy = cy + 24 + (cellH - 34 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+
+        } else {
+            // LINKED TO GAMES (4 puzzles / page)
+            const cols = 2, rows = 2;
+            const marginX = 50, marginY = 40;
+            const cellW = (w - 2 * marginX) / cols;
+            const cellH = (h - marginY - 50) / rows;
+
+            puzzlesSlice.slice(0, 4).forEach((p, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const cx = marginX + col * cellW;
+                const cy = marginY + row * cellH;
+
+                const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
+                const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
+
+                if (calCnv) {
+                    const calW = Math.round(cellW * 0.24);
+                    const calH = Math.round(calW * 0.80);
+                    ctx.drawImage(calCnv, cx + cellW - calW - 6, cy + 4, calW, calH);
+
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    ctx.fillText(dTxt ? `${dTxt} #${p.puzzleId}` : `${p.title} (${p.difficultyLabel})`, cx + 10, cy + 16);
+                } else {
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    ctx.fillText(dTxt ? `${dTxt} · ${p.title}` : `${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 15);
+                }
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
+                const avail = Math.min(cellW - 28, cellH - 38);
+                const ox = cx + (cellW - avail) / 2;
+                const oy = cy + 26 + (cellH - 38 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+        }
 
     } else { // 6 per page
-        const cols = 2, rows = 3;
-        const marginX = 50, marginY = 35;
-        const cellW = (w - 2 * marginX) / cols;
-        const cellH = (h - marginY - 45) / rows;
+        if (isPerPageScope && (pageDate || pageCal)) {
+            // UNIFIED 1 DATE PER PAGE (6 puzzles / page)
+            let topHeaderHeight = 65;
 
-        puzzlesSlice.slice(0, 6).forEach((p, idx) => {
-            const col = idx % cols;
-            const row = Math.floor(idx / cols);
-            const cx = marginX + col * cellW;
-            const cy = marginY + row * cellH;
-
-            const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
-            const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
-
-            if (calCnv) {
-                const calW = Math.round(cellW * 0.22);
+            if (pageCal) {
+                const calW = Math.round(w * 0.16);
                 const calH = Math.round(calW * 0.80);
-                ctx.drawImage(calCnv, cx + cellW - calW - 4, cy + 4, calW, calH);
+                ctx.drawImage(pageCal, w - 50 - calW, 20, calW, calH);
 
                 ctx.textAlign = "left";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                ctx.fillText(dTxt ? `${dTxt} #${p.puzzleId}` : `#{p.puzzleId} (${p.difficultyLabel})`, cx + 6, cy + 13);
+                ctx.font = `bold ${Math.round(fontTitlePx * 0.82)}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate || `Daily Sudoku #${pageNum}`, 50, 36);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, 50, 60);
+
+                topHeaderHeight = Math.max(80, 20 + calH + 10);
             } else {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#14251F";
-                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
-                ctx.fillText(dTxt ? `${dTxt} · ${p.title}` : `${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 12);
+                ctx.font = `bold ${Math.round(fontTitlePx * 0.85)}px "Outfit", sans-serif`;
+                ctx.fillText(pageDate, w / 2, 32);
+
+                ctx.fillStyle = "#5A6962";
+                ctx.font = `${fontSubPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(`Daily Puzzles · Page ${pageNum} of ${totalPages}`, w / 2, 56);
+                topHeaderHeight = 72;
             }
 
-            const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
-            const avail = Math.min(cellW - 22, cellH - 30);
-            const ox = cx + (cellW - avail) / 2;
-            const oy = cy + 22 + (cellH - 30 - avail) / 2;
-            ctx.drawImage(pCanvas, ox, oy, avail, avail);
-        });
+            // Divider rule
+            ctx.strokeStyle = "#E2E8F0";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(50, topHeaderHeight - 6);
+            ctx.lineTo(w - 50, topHeaderHeight - 6);
+            ctx.stroke();
+
+            const cols = 2, rows = 3;
+            const marginX = 50;
+            const availH = h - topHeaderHeight - 40;
+            const cellW = (w - 2 * marginX) / cols;
+            const cellH = availH / rows;
+
+            puzzlesSlice.slice(0, 6).forEach((p, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const cx = marginX + col * cellW;
+                const cy = topHeaderHeight + row * cellH;
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#14251F";
+                ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                ctx.fillText(`${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 12);
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 9.0, dpi, solution: false });
+                const avail = Math.min(cellW - 20, cellH - 28);
+                const ox = cx + (cellW - avail) / 2;
+                const oy = cy + 20 + (cellH - 28 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+
+        } else {
+            // LINKED TO GAMES (6 puzzles / page)
+            const cols = 2, rows = 3;
+            const marginX = 50, marginY = 35;
+            const cellW = (w - 2 * marginX) / cols;
+            const cellH = (h - marginY - 45) / rows;
+
+            puzzlesSlice.slice(0, 6).forEach((p, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const cx = marginX + col * cellW;
+                const cy = marginY + row * cellH;
+
+                const dTxt = dateStrings && dateStrings[idx] ? dateStrings[idx] : "";
+                const calCnv = calendarCanvases && calendarCanvases[idx] ? calendarCanvases[idx] : null;
+
+                if (calCnv) {
+                    const calW = Math.round(cellW * 0.22);
+                    const calH = Math.round(calW * 0.80);
+                    ctx.drawImage(calCnv, cx + cellW - calW - 4, cy + 4, calW, calH);
+
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    ctx.fillText(dTxt ? `${dTxt} #${p.puzzleId}` : `#{p.puzzleId} (${p.difficultyLabel})`, cx + 6, cy + 13);
+                } else {
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#14251F";
+                    ctx.font = `bold ${fontLblPx}px "Outfit", sans-serif`;
+                    ctx.fillText(dTxt ? `${dTxt} · ${p.title}` : `${p.title} (${p.difficultyLabel})`, cx + cellW / 2, cy + 12);
+                }
+
+                const pCanvas = renderSudokuGridCanvas({ puzzle: p, style, cellMm: 10.0, dpi, solution: false });
+                const avail = Math.min(cellW - 22, cellH - 30);
+                const ox = cx + (cellW - avail) / 2;
+                const oy = cy + 22 + (cellH - 30 - avail) / 2;
+                ctx.drawImage(pCanvas, ox, oy, avail, avail);
+            });
+        }
     }
 
     // Page footer

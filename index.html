@@ -186,9 +186,20 @@
                             <div class="form-group">
                                 <label for="sdk-cal-progression">Progression Cadence</label>
                                 <select id="sdk-cal-progression">
-                                    <option value="daily" selected>Daily (1 Day / Puzzle)</option>
-                                    <option value="monthly">Monthly (1 Month / Puzzle)</option>
+                                    <option value="daily" selected>Daily (1 Day / Step)</option>
+                                    <option value="monthly">Monthly (1 Month / Step)</option>
                                 </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Date Assignment Scope</label>
+                                <div class="preset-pills" id="cal-date-scope-pills">
+                                    <button type="button" class="preset-pill-btn active" data-scope="per_game" id="scope-per-game-btn">🎮 1 Date Per Game</button>
+                                    <button type="button" class="preset-pill-btn" data-scope="per_page" id="scope-per-page-btn">📖 1 Date Per Page</button>
+                                </div>
+                                <div class="toggle-sub" id="date-scope-desc" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                                    Each puzzle slot receives its own sequential calendar date.
+                                </div>
                             </div>
 
                             <div class="form-group">

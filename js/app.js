@@ -67,6 +67,7 @@ const state = {
     // Date & Calendar
     dateEnabled: false,
     dateMode: "text", // "text" | "calendar_image"
+    dateScope: "per_game", // "per_game" | "per_page"
     selectedYear: 2026,
     startDate: "2026-01-01",
     progression: "daily",
@@ -130,6 +131,10 @@ const dom = {
     calYearSel: document.getElementById("sdk-cal-year-sel"),
     startDateInput: document.getElementById("sdk-start-date-input"),
     calProgSel: document.getElementById("sdk-cal-progression"),
+    calScopePills: document.getElementById("cal-date-scope-pills"),
+    scopePerGameBtn: document.getElementById("scope-per-game-btn"),
+    scopePerPageBtn: document.getElementById("scope-per-page-btn"),
+    dateScopeDesc: document.getElementById("date-scope-desc"),
     dispTextBtn: document.getElementById("disp-text-btn"),
     dispCardBtn: document.getElementById("disp-card-btn"),
     dateFmtGroup: document.getElementById("date-fmt-group"),
@@ -384,16 +389,17 @@ function renderSudokuStage(ctx, totalPages) {
 
         let dateStrings = null;
         let calendarCanvases = null;
+        let pageDateText = null;
+        let pageCalendarCanvas = null;
 
         if (state.dateEnabled) {
-            dateStrings = [];
-            calendarCanvases = [];
-            for (let i = startIdx; i < Math.min(state.puzzles.length, endIdx); i++) {
-                const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
-                dateStrings.push(info.dateStr);
+            if (state.dateScope === "per_page") {
+                const pageIdx = state.currentPage - 1;
+                const info = getPuzzleDateInfo(pageIdx, state.startDate, state.progression, state.dateFormat);
+                pageDateText = info.dateStr;
 
                 if (state.dateMode === "calendar_image") {
-                    const cCanvas = renderMiniMonthCalendarCanvas({
+                    pageCalendarCanvas = renderMiniMonthCalendarCanvas({
                         year: info.year,
                         month: info.month,
                         highlightDay: info.highlightDay,
@@ -402,7 +408,26 @@ function renderSudokuStage(ctx, totalPages) {
                         showCardBorder: state.calBorder,
                         showYear: state.calShowYear
                     });
-                    calendarCanvases.push(cCanvas);
+                }
+            } else {
+                dateStrings = [];
+                calendarCanvases = [];
+                for (let i = startIdx; i < Math.min(state.puzzles.length, endIdx); i++) {
+                    const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
+                    dateStrings.push(info.dateStr);
+
+                    if (state.dateMode === "calendar_image") {
+                        const cCanvas = renderMiniMonthCalendarCanvas({
+                            year: info.year,
+                            month: info.month,
+                            highlightDay: info.highlightDay,
+                            theme: state.calTheme,
+                            firstDaySunday: state.calSunday,
+                            showCardBorder: state.calBorder,
+                            showYear: state.calShowYear
+                        });
+                        calendarCanvases.push(cCanvas);
+                    }
                 }
             }
         }
@@ -415,8 +440,11 @@ function renderSudokuStage(ctx, totalPages) {
             totalPages,
             dpi: 150,
             includeInstructions: state.includeInstructions,
+            dateScope: state.dateScope,
             dateStrings,
-            calendarCanvases
+            calendarCanvases,
+            pageDateText,
+            pageCalendarCanvas
         });
 
         dom.mainCanvas.width = pageCnv.width;
@@ -446,7 +474,10 @@ function renderSudokuStage(ctx, totalPages) {
         const p = state.puzzles[pIdx] || state.puzzles[0];
         let dTxt = null;
         if (state.dateEnabled) {
-            const info = getPuzzleDateInfo(pIdx, state.startDate, state.progression, state.dateFormat);
+            const dateIdx = (state.dateScope === "per_page")
+                ? Math.floor(pIdx / state.puzzlesPerPage)
+                : pIdx;
+            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
             dTxt = info.dateStr;
         }
 
@@ -760,6 +791,28 @@ function setupEvents() {
         refreshStudio();
     });
 
+    if (dom.scopePerGameBtn && dom.scopePerPageBtn) {
+        dom.scopePerGameBtn.addEventListener("click", () => {
+            state.dateScope = "per_game";
+            dom.scopePerGameBtn.classList.add("active");
+            dom.scopePerPageBtn.classList.remove("active");
+            if (dom.dateScopeDesc) {
+                dom.dateScopeDesc.textContent = "Each puzzle slot receives its own sequential calendar date.";
+            }
+            refreshStudio();
+        });
+
+        dom.scopePerPageBtn.addEventListener("click", () => {
+            state.dateScope = "per_page";
+            dom.scopePerPageBtn.classList.add("active");
+            dom.scopePerGameBtn.classList.remove("active");
+            if (dom.dateScopeDesc) {
+                dom.dateScopeDesc.textContent = "All puzzles on the same book page share one unified date header.";
+            }
+            refreshStudio();
+        });
+    }
+
     dom.dispTextBtn.addEventListener("click", () => {
         state.dateMode = "text";
         dom.dispTextBtn.classList.add("active");
@@ -970,16 +1023,38 @@ function setProgress(percent, text) {
 // Helper to render images for Canva Bulk cell embedding
 async function renderCanvaBulkImages(onProgress) {
     const total = state.puzzles.length;
+    const totalPages = Math.ceil(total / state.puzzlesPerPage);
     const gridImages = [];
     const solutionImages = [];
     const calendarImages = [];
+    const pageCalendarImages = [];
+
+    // Pre-generate page calendar images when calendar image mode is active
+    if (state.dateEnabled && state.dateMode === "calendar_image") {
+        for (let p = 0; p < totalPages; p++) {
+            const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
+            const calCnv = renderMiniMonthCalendarCanvas({
+                year: info.year,
+                month: info.month,
+                highlightDay: info.highlightDay,
+                theme: state.calTheme,
+                firstDaySunday: state.calSunday,
+                showCardBorder: state.calBorder,
+                showYear: state.calShowYear
+            });
+            pageCalendarImages.push(calCnv.toDataURL("image/png"));
+        }
+    }
 
     for (let i = 0; i < total; i++) {
         const p = state.puzzles[i];
         let dTxt = null;
 
         if (state.dateEnabled) {
-            const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
+            const dateIdx = (state.dateScope === "per_page")
+                ? Math.floor(i / state.puzzlesPerPage)
+                : i;
+            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
             dTxt = info.dateStr;
 
             if (state.dateMode === "calendar_image") {
@@ -1048,21 +1123,35 @@ async function renderCanvaBulkImages(onProgress) {
         }
     }
 
-    return { gridImages, solutionImages, calendarImages };
+    return { gridImages, solutionImages, calendarImages, pageCalendarImages };
 }
 
 // Handle Canva Bulk Excel Export (with REAL embedded floating images)
 async function handleExportCanva() {
     try {
         setProgress(5, "Rendering puzzle images for Canva Bulk cell embedding...");
-        const { gridImages, solutionImages, calendarImages } = await renderCanvaBulkImages(
+        const { gridImages, solutionImages, calendarImages, pageCalendarImages } = await renderCanvaBulkImages(
             pct => setProgress(pct, `Embedding images into Canva Excel: ${pct}%...`)
         );
 
         setProgress(70, "Building Canva Bulk Excel workbook with embedded pictures...");
-        const dateStrings = state.puzzles.map((_, i) =>
-            state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
-        );
+        const totalPuzzles = state.puzzles.length;
+        const totalPages = Math.ceil(totalPuzzles / state.puzzlesPerPage);
+
+        const dateStrings = state.puzzles.map((_, i) => {
+            const dateIdx = (state.dateScope === "per_page")
+                ? Math.floor(i / state.puzzlesPerPage)
+                : i;
+            return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
+        });
+
+        const pageDateStrings = [];
+        if (state.dateEnabled) {
+            for (let p = 0; p < totalPages; p++) {
+                const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
+                pageDateStrings.push(info.dateStr);
+            }
+        }
 
         let buffer;
         let filename;
@@ -1072,11 +1161,14 @@ async function handleExportCanva() {
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
+                dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
+                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
-                calendarImages
+                calendarImages,
+                pageCalendarImages
             });
             filename = "sudoku_canva_bulk.xlsx";
         } else {
@@ -1118,6 +1210,9 @@ function handleExportSolutions() {
 async function handleExportPdf() {
     try {
         setProgress(5, "Building print-ready KDP PDF book...");
+        const totalPuzzles = state.puzzles.length;
+        const totalPages = Math.ceil(totalPuzzles / state.puzzlesPerPage);
+
         const dateStrings = state.puzzles.map((_, i) =>
             state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
         );
@@ -1138,6 +1233,28 @@ async function handleExportPdf() {
             return null;
         });
 
+        const pageDateStrings = [];
+        const pageCalendarCanvases = [];
+        if (state.dateEnabled) {
+            for (let p = 0; p < totalPages; p++) {
+                const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
+                pageDateStrings.push(info.dateStr);
+                if (state.dateMode === "calendar_image") {
+                    pageCalendarCanvases.push(renderMiniMonthCalendarCanvas({
+                        year: info.year,
+                        month: info.month,
+                        highlightDay: info.highlightDay,
+                        theme: state.calTheme,
+                        firstDaySunday: state.calSunday,
+                        showCardBorder: state.calBorder,
+                        showYear: state.calShowYear
+                    }));
+                } else {
+                    pageCalendarCanvases.push(null);
+                }
+            }
+        }
+
         let pdfBuffer;
         let filename;
 
@@ -1149,8 +1266,11 @@ async function handleExportPdf() {
                 solutionsPerPage: state.solutionsPerPage,
                 trimChoice: state.trimChoice,
                 includeInstructions: state.includeInstructions,
+                dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 calendarCanvases,
+                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
+                pageCalendarCanvases,
                 onProgress: (p) => setProgress(p, `Rendering PDF book pages: ${p}%`)
             });
             filename = "sudoku_kdp_interior.pdf";
@@ -1188,6 +1308,7 @@ async function handleExportZip() {
         const zip = new window.JSZip();
         const imgFolder = zip.folder("images");
         const total = state.puzzles.length;
+        const totalPages = Math.ceil(total / state.puzzlesPerPage);
 
         setProgress(1, `Rendering 300 DPI high-resolution puzzle images: 0 / ${total}`);
 
@@ -1196,6 +1317,34 @@ async function handleExportZip() {
         const gridImages = [];
         const solutionImages = [];
         const calendarImages = [];
+        const pageCalendarImages = [];
+        const pageDateStrings = [];
+
+        // Pre-render page calendar cards if 1 date per page is selected
+        if (state.dateEnabled) {
+            for (let p = 0; p < totalPages; p++) {
+                const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
+                pageDateStrings.push(info.dateStr);
+
+                if (state.dateMode === "calendar_image") {
+                    const calCnv = renderMiniMonthCalendarCanvas({
+                        year: info.year,
+                        month: info.month,
+                        highlightDay: info.highlightDay,
+                        theme: state.calTheme,
+                        firstDaySunday: state.calSunday,
+                        showCardBorder: state.calBorder,
+                        showYear: state.calShowYear
+                    });
+                    pageCalendarImages.push(calCnv.toDataURL("image/png"));
+
+                    if (state.dateScope === "per_page") {
+                        const calBlob = await canvasToBlob(calCnv);
+                        imgFolder.file(`page_${String(p + 1).padStart(3, "0")}_calendar.png`, calBlob);
+                    }
+                }
+            }
+        }
 
         for (let i = 0; i < total; i++) {
             const p = state.puzzles[i];
@@ -1205,10 +1354,13 @@ async function handleExportZip() {
             let calCnv = null;
 
             if (state.dateEnabled) {
-                const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
+                const dateIdx = (state.dateScope === "per_page")
+                    ? Math.floor(i / state.puzzlesPerPage)
+                    : i;
+                const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
                 dTxt = info.dateStr;
 
-                if (state.dateMode === "calendar_image") {
+                if (state.dateMode === "calendar_image" && state.dateScope === "per_game") {
                     calCnv = renderMiniMonthCalendarCanvas({
                         year: info.year,
                         month: info.month,
@@ -1219,7 +1371,7 @@ async function handleExportZip() {
                         showYear: state.calShowYear
                     });
                     const calBlob = await canvasToBlob(calCnv);
-                    imgFolder.file(`page_${pPad}_calendar.png`, calBlob);
+                    imgFolder.file(`puzzle_${pPad}_calendar.png`, calBlob);
                     calendarImages.push(calCnv.toDataURL("image/png"));
                 }
             }
@@ -1238,7 +1390,7 @@ async function handleExportZip() {
                     dateText: dTxt
                 });
                 const gridBlob = await canvasToBlob(gridCnv);
-                imgFolder.file(`page_${pPad}_grid.png`, gridBlob);
+                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlob);
                 gridImages.push(gridCnv.toDataURL("image/png"));
 
                 // Sudoku Solution Image (300 DPI)
@@ -1250,7 +1402,7 @@ async function handleExportZip() {
                     solution: true
                 });
                 const solBlob = await canvasToBlob(solCnv);
-                imgFolder.file(`page_${pPad}_solution.png`, solBlob);
+                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlob);
                 solutionImages.push(solCnv.toDataURL("image/png"));
 
             } else {
@@ -1265,7 +1417,7 @@ async function handleExportZip() {
                     showGridLines: true
                 });
                 const gridBlob = await canvasToBlob(gridCnv);
-                imgFolder.file(`page_${pPad}_grid.png`, gridBlob);
+                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlob);
                 gridImages.push(gridCnv.toDataURL("image/png"));
 
                 // Word Search Solution Image (300 DPI)
@@ -1278,7 +1430,7 @@ async function handleExportZip() {
                     showGridLines: true
                 });
                 const solBlob = await canvasToBlob(solCnv);
-                imgFolder.file(`page_${pPad}_solution.png`, solBlob);
+                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlob);
                 solutionImages.push(solCnv.toDataURL("image/png"));
             }
 
@@ -1291,20 +1443,26 @@ async function handleExportZip() {
 
         // Add Canva Excel with embedded pictures
         setProgress(75, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
-        const dateStrings = state.puzzles.map((_, i) =>
-            state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
-        );
+        const dateStrings = state.puzzles.map((_, i) => {
+            const dateIdx = (state.dateScope === "per_page")
+                ? Math.floor(i / state.puzzlesPerPage)
+                : i;
+            return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
+        });
 
         if (state.mode === "sudoku") {
             const canvaBuffer = await buildCanvaSudokuExcel({
                 puzzles: state.puzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
+                dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
+                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
-                calendarImages
+                calendarImages,
+                pageCalendarImages
             });
             zip.file("sudoku_canva_bulk.xlsx", canvaBuffer);
 

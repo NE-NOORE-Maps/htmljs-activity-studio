@@ -24,8 +24,11 @@ export async function buildSudokuKdpPdf({
     solutionsPerPage = 6,
     trimChoice = "8.5 x 11 inches (Letter)",
     includeInstructions = true,
+    dateScope = "per_game",
     dateStrings = [],
     calendarCanvases = [],
+    pageDateStrings = [],
+    pageCalendarCanvases = [],
     onProgress = null
 } = {}) {
     if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
@@ -57,6 +60,8 @@ export async function buildSudokuKdpPdf({
 
         const dSlice = dateStrings && dateStrings.length > 0 ? dateStrings.slice(startIdx, endIdx) : null;
         const cSlice = calendarCanvases && calendarCanvases.length > 0 ? calendarCanvases.slice(startIdx, endIdx) : null;
+        const pageDateText = pageDateStrings && pageDateStrings[pPage - 1] ? pageDateStrings[pPage - 1] : null;
+        const pageCalendarCanvas = pageCalendarCanvases && pageCalendarCanvases[pPage - 1] ? pageCalendarCanvases[pPage - 1] : null;
 
         // Render page canvas at 150 DPI for crisp vector-like PDF embedding without bloated file size
         const pageCanvas = renderSudokuBookPageCanvas({
@@ -67,8 +72,11 @@ export async function buildSudokuKdpPdf({
             totalPages: totalPuzPages,
             dpi: 150,
             includeInstructions,
-            dateStrings: dSlice,
-            calendarCanvases: cSlice
+            dateScope,
+            dateStrings: dateScope === "per_page" ? null : dSlice,
+            calendarCanvases: dateScope === "per_page" ? null : cSlice,
+            pageDateText,
+            pageCalendarCanvas
         });
 
         const imgData = pageCanvas.toDataURL("image/jpeg", 0.92);

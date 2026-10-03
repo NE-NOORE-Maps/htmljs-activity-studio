@@ -169,6 +169,10 @@ export function getPuzzleDateInfo(puzzleIdx, startDate, progression = "daily", f
     };
 }
 
+export function getPageDateInfo(pageIdx, startDate, progression = "daily", formatChoice = "27-September") {
+    return getPuzzleDateInfo(pageIdx, startDate, progression, formatChoice);
+}
+
 /**
  * Render a 300 DPI mini month calendar card directly onto an HTML5 Canvas.
  */
