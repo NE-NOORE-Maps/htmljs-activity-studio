@@ -969,7 +969,7 @@ function setupEvents() {
     // Sudoku Volume Controls
     // ==========================================
     dom.countInput.addEventListener("input", (e) => {
-        state.puzzleCount = Math.max(1, Math.min(366, parseInt(e.target.value, 10) || 1));
+        state.puzzleCount = Math.max(1, Math.min(5000, parseInt(e.target.value, 10) || 1));
         dom.countBadge.textContent = state.puzzleCount;
         if (state.mode === "sudoku") refreshStudio();
     });
@@ -1021,7 +1021,7 @@ function setupEvents() {
     // ==========================================
     if (dom.wsCountInput) {
         dom.wsCountInput.addEventListener("input", (e) => {
-            state.wsPuzzleCount = Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 1));
+            state.wsPuzzleCount = Math.max(1, Math.min(5000, parseInt(e.target.value, 10) || 1));
             if (dom.wsCountBadge) dom.wsCountBadge.textContent = state.wsPuzzleCount;
             if (state.mode === "wordsearch") refreshStudio();
         });

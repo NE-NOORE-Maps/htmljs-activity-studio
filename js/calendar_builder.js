@@ -142,7 +142,15 @@ export function formatPuzzleDate(dateObj, fmtChoice) {
 }
 
 export function getPuzzleDateInfo(puzzleIdx, startDate, progression = "daily", formatChoice = "27-September") {
-    const base = new Date(startDate);
+    let base;
+    if (typeof startDate === "string" && startDate.includes("-")) {
+        const parts = startDate.split("-").map(p => parseInt(p, 10));
+        base = new Date(parts[0], parts[1] - 1, parts[2] || 1, 12, 0, 0);
+    } else {
+        base = new Date(startDate);
+        base.setHours(12, 0, 0, 0);
+    }
+
     let targetDate = null;
     let highlightDay = null;
 
@@ -150,10 +158,10 @@ export function getPuzzleDateInfo(puzzleIdx, startDate, progression = "daily", f
         const totalMonths = base.getFullYear() * 12 + base.getMonth() + puzzleIdx;
         const y = Math.floor(totalMonths / 12);
         const m = totalMonths % 12;
-        targetDate = new Date(y, m, 1);
+        targetDate = new Date(y, m, 1, 12, 0, 0);
         highlightDay = null;
     } else {
-        targetDate = new Date(base.getTime() + puzzleIdx * 86400000);
+        targetDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + puzzleIdx, 12, 0, 0);
         highlightDay = targetDate.getDate();
     }
 
