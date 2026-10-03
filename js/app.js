@@ -22,12 +22,16 @@ import {
 
 import {
     generateWordSearchPuzzle,
-    SAMPLE_WORD_BANKS,
-    cleanWordForLanguage
+    cleanWordForLanguage,
+    LANGUAGE_CONFIGS,
+    maxWordsForGrid,
+    parseWordSearchText,
+    parseWordSearchCsv
 } from "./wordsearch_engine.js";
 
 import {
     SUDOKU_PRESETS,
+    WS_PRESETS,
     WORDSEARCH_HIGHLIGHT_COLORS,
     renderSudokuGridCanvas,
     renderSudokuBookPageCanvas,
@@ -55,7 +59,7 @@ const state = {
     viewMode: "book_page", // "book_page" | "single_puzzle" | "single_solution" | "solution_page"
     currentPage: 1,
 
-    // Volume & Layout
+    // Volume & Layout (Sudoku)
     puzzleCount: 50,
     startNumber: 1,
     puzzlesPerPage: 1,
@@ -63,6 +67,16 @@ const state = {
     trimChoice: "8.5 x 11 inches (Letter)",
     sameExcel: true,
     includeInstructions: true,
+
+    // Volume & Layout (Word Search)
+    wsPuzzleCount: 12,
+    wsStartNumber: 1,
+    wsTargetCountEnforced: false,
+    wsSolutionsPerPage: 4,
+    wsTrimChoice: "8.5 x 11 inches (Letter)",
+    wsSameExcel: true,
+    wsShowWordBank: true,
+    wsWordCols: 3,
 
     // Date & Calendar
     dateEnabled: false,
@@ -77,8 +91,12 @@ const state = {
     calSunday: true,
     calShowYear: true,
 
-    // Visual Styling
+    // Visual Styling (Sudoku)
     activeStyle: { ...SUDOKU_PRESETS.adult_classic },
+
+    // Visual Styling (Word Search)
+    wsActivePreset: "adult_classic",
+    wsActiveStyle: { ...WS_PRESETS.adult_classic },
 
     // Sudoku Generator Rules
     sudokuType: SudokuType.CLASSIC_9X9,
@@ -88,14 +106,20 @@ const state = {
     wordokuWord: "PUBLISHER",
     titleTemplate: "Sudoku #{num}",
 
-    // Word Search Generator Rules
-    wsTheme: "animals",
-    wsWords: [...SAMPLE_WORD_BANKS.animals],
-    wsGridDim: 15,
+    // Word Search Generator Rules & Content
+    wsLanguage: "English",
+    wsAccentMode: "Standard Book Mode",
+    wsSource: "paste", // "paste" | "csv"
+    wsThemeInput: "Animals",
+    wsSeed: 42,
+    wsRawText: LANGUAGE_CONFIGS["English"].sample_words,
+    wsCsvContent: null,
+    wsCsvFileName: null,
+    wsGridChoice: "12x10",
+    wsRows: 12,
+    wsCols: 10,
+    wsWordsPerPage: 12,
     wsDifficulty: "medium",
-    wsLanguage: "en",
-    wsWordCols: 3,
-    wsSeed: 101,
     wsTitleTemplate: "Word Search #{num}",
 
     // Generated batch cache
@@ -114,16 +138,32 @@ const dom = {
     sidebarTabBtns: document.querySelectorAll(".sidebar-tab-btn"),
     tabPanels: document.querySelectorAll(".tab-panel"),
 
-    // Volume Controls
+    // Volume Sections
+    sdkVolumeSection: document.getElementById("sdk-volume-section"),
+    wsVolumeSection: document.getElementById("ws-volume-section"),
+
+    // Sudoku Volume Controls
     countInput: document.getElementById("sdk-count-input"),
     countBadge: document.getElementById("sdk-count-badge"),
     startNumInput: document.getElementById("sdk-start-num"),
-    countPresetBtns: document.querySelectorAll(".preset-pill-btn[data-count]"),
+    countPresetBtns: document.querySelectorAll("#sdk-volume-section .preset-pill-btn[data-count]"),
     puzPerPageSel: document.getElementById("sdk-puz-per-page"),
     solPerPageSel: document.getElementById("sdk-sol-per-page"),
     trimChoiceSel: document.getElementById("sdk-trim-choice"),
     sameExcelTog: document.getElementById("sdk-same-excel-tog"),
     instructionsTog: document.getElementById("sdk-instructions-tog"),
+
+    // Word Search Volume Controls
+    wsCountInput: document.getElementById("ws-count-input"),
+    wsCountBadge: document.getElementById("ws-count-badge"),
+    wsStartNum: document.getElementById("ws-start-num"),
+    wsCountPresetBtns: document.querySelectorAll("#ws-count-preset-pills .preset-pill-btn"),
+    wsSolPerPageSel: document.getElementById("ws-sol-per-page"),
+    wsTrimChoiceSel: document.getElementById("ws-trim-choice"),
+    wsWordColsSel: document.getElementById("ws-word-cols-select"),
+    wsShowBankTog: document.getElementById("ws-show-bank-tog"),
+    wsSameExcelTog: document.getElementById("ws-same-excel-tog"),
+    wsTargetCountTog: document.getElementById("ws-target-count-tog"),
 
     // Date Controls
     dateEnabledTog: document.getElementById("sdk-date-enabled-tog"),
@@ -146,7 +186,8 @@ const dom = {
     calShowYearTog: document.getElementById("sdk-cal-show-year-tog"),
     calThumbnail: document.getElementById("cal-preview-thumbnail"),
 
-    // Style Controls
+    // Sudoku Style Controls
+    sdkStylingSection: document.getElementById("sdk-styling-section"),
     audiencePillBtns: document.querySelectorAll("#audience-preset-pills .preset-pill-btn"),
     cellStyleSel: document.getElementById("sdk-cell-style"),
     shadingModeSel: document.getElementById("sdk-shading-mode"),
@@ -155,6 +196,22 @@ const dom = {
     innerLwInput: document.getElementById("sdk-inner-lw"),
     fontScaleInput: document.getElementById("sdk-font-scale"),
     solutionModeSel: document.getElementById("sdk-solution-mode"),
+
+    // Word Search Style Controls
+    wsStylingSection: document.getElementById("ws-styling-section"),
+    wsAudiencePresetBtns: document.querySelectorAll("#ws-audience-preset-pills .preset-pill-btn"),
+    wsThemeBadge: document.getElementById("ws-theme-badge"),
+    wsCellStyleSel: document.getElementById("ws-cell-style-sel"),
+    wsSolStyleSel: document.getElementById("ws-sol-style-sel"),
+    wsLineColorSel: document.getElementById("ws-line-color-sel"),
+    wsCustomLineHex: document.getElementById("ws-custom-line-hex"),
+    wsLineWidthInput: document.getElementById("ws-line-width-input"),
+    wsLineWVal: document.getElementById("ws-line-w-val"),
+    wsLetterFontSel: document.getElementById("ws-letter-font-sel"),
+    wsLetterColorSel: document.getElementById("ws-letter-color-sel"),
+    wsCustomLetterHex: document.getElementById("ws-custom-letter-hex"),
+    wsFontScaleSlider: document.getElementById("ws-font-scale-slider"),
+    wsFontScaleVal: document.getElementById("ws-font-scale-val"),
 
     // Sudoku Rules Controls
     sdkRulesSection: document.getElementById("sdk-rules-section"),
@@ -166,17 +223,48 @@ const dom = {
     titleTplInput: document.getElementById("sdk-title-tpl"),
     symmetricTog: document.getElementById("sdk-symmetric-tog"),
 
-    // Word Search Rules Controls
+    // Word Search Rules & Content Controls
     wsRulesSection: document.getElementById("ws-rules-section"),
-    wsThemePillBtns: document.querySelectorAll("#ws-theme-presets .preset-pill-btn"),
+    wsLangSelect: document.getElementById("ws-lang-select"),
+    wsAccentModeSel: document.getElementById("ws-accent-mode-sel"),
+    wsLangBadge: document.getElementById("ws-lang-badge"),
+    wsResetSampleBtn: document.getElementById("ws-reset-sample-btn"),
+    wsSourcePillBtns: document.querySelectorAll("#ws-source-pills .preset-pill-btn"),
+    wsSrcPasteBtn: document.getElementById("ws-src-paste-btn"),
+    wsSrcCsvBtn: document.getElementById("ws-src-csv-btn"),
+    wsThemeInput: document.getElementById("ws-theme-input"),
+    wsSeedInput: document.getElementById("ws-seed-input"),
+    wsShuffleSeedBtn: document.getElementById("ws-shuffle-seed-btn"),
+    wsCsvDropzone: document.getElementById("ws-csv-dropzone"),
+    wsCsvFileInput: document.getElementById("ws-csv-file-input"),
+    wsCsvFileLabel: document.getElementById("ws-csv-file-label"),
+    wsTextareaGroup: document.getElementById("ws-textarea-group"),
     wsWordListInput: document.getElementById("ws-word-list-input"),
     wsWordCountBadge: document.getElementById("ws-word-count-badge"),
-    wsGridDimSel: document.getElementById("ws-grid-dim-select"),
-    wsDifficultySel: document.getElementById("ws-difficulty-select"),
-    wsLangSel: document.getElementById("ws-lang-select"),
-    wsWordColsSel: document.getElementById("ws-word-cols-select"),
-    wsSeedInput: document.getElementById("ws-seed-input"),
-    wsTitleTplInput: document.getElementById("ws-title-tpl"),
+    wsSummaryCard: document.getElementById("ws-summary-card"),
+    wsSummaryText: document.getElementById("ws-summary-text"),
+    wsSampleTag: document.getElementById("ws-sample-tag"),
+    wsDownThemedCsv: document.getElementById("ws-down-themed-csv"),
+    wsDownSimpleCsv: document.getElementById("ws-down-simple-csv"),
+    wsAiExpander: document.getElementById("ws-ai-expander"),
+    wsAiExpanderHdr: document.getElementById("ws-ai-expander-hdr"),
+    wsAiExpanderBody: document.getElementById("ws-ai-expander-body"),
+    wsAiExpIcon: document.getElementById("ws-ai-exp-icon"),
+    wsPromptTypeSel: document.getElementById("ws-prompt-type-sel"),
+    wsPromptCodeBox: document.getElementById("ws-prompt-code-box"),
+    wsCopyPromptBtn: document.getElementById("ws-copy-prompt-btn"),
+    wsGridDimSelect: document.getElementById("ws-grid-dim-select"),
+    wsDifficultySelect: document.getElementById("ws-difficulty-select"),
+    wsCustomDimsRow: document.getElementById("ws-custom-dims-row"),
+    wsCustRows: document.getElementById("ws-cust-rows"),
+    wsCustRowsVal: document.getElementById("ws-cust-rows-val"),
+    wsCustCols: document.getElementById("ws-cust-cols"),
+    wsCustColsVal: document.getElementById("ws-cust-cols-val"),
+    wsWordsPerPageSlider: document.getElementById("ws-words-per-page-slider"),
+    wsWordsPerPageVal: document.getElementById("ws-words-per-page-val"),
+    wsCapacityCard: document.getElementById("ws-capacity-card"),
+    wsCapacityDimText: document.getElementById("ws-capacity-dim-text"),
+    wsCapacitySubText: document.getElementById("ws-capacity-sub-text"),
 
     // Metrics
     metricPuzzles: document.getElementById("metric-puzzles"),
@@ -230,6 +318,111 @@ function populateCalendarThemes() {
     });
 }
 
+// Update Word Search Input Summary Card
+function updateWsSummaryCard() {
+    let groups = {};
+    if (state.wsSource === "csv" && state.wsCsvContent) {
+        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+    } else {
+        const raw = state.wsRawText || "";
+        groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+    }
+    const themeCount = Object.keys(groups).length;
+    const totalWords = Object.values(groups).reduce((acc, list) => acc + list.length, 0);
+
+    if (dom.wsSummaryText) {
+        dom.wsSummaryText.textContent = `${themeCount} theme${themeCount !== 1 ? "s" : ""} · ${totalWords} valid word${totalWords !== 1 ? "s" : ""}`;
+    }
+    if (dom.wsWordCountBadge) {
+        dom.wsWordCountBadge.textContent = `${totalWords} words`;
+    }
+    if (dom.wsSampleTag) {
+        if (state.wsSource === "csv") {
+            dom.wsSampleTag.textContent = state.wsCsvFileName ? `CSV: ${state.wsCsvFileName}` : "CSV Imported";
+        } else {
+            dom.wsSampleTag.textContent = "Word List Input";
+        }
+    }
+}
+
+// Update Word Search Capacity Card
+function updateWsCapacityCard() {
+    let rows = state.wsRows || 12;
+    let cols = state.wsCols || 10;
+    if (state.wsGridChoice === "auto") {
+        rows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
+        cols = rows;
+    } else if (state.wsGridChoice !== "custom" && state.wsGridChoice && state.wsGridChoice.includes("x")) {
+        const parts = state.wsGridChoice.split("x").map(Number);
+        rows = parts[0] || 12;
+        cols = parts[1] || 10;
+    }
+    state.wsRows = rows;
+    state.wsCols = cols;
+
+    const cap = maxWordsForGrid(rows, cols);
+    if (dom.wsCapacityDimText) {
+        dom.wsCapacityDimText.textContent = `${rows} Rows × ${cols} Columns (${rows * cols} cells)`;
+    }
+    if (dom.wsCapacitySubText) {
+        dom.wsCapacitySubText.textContent = `Suggested capacity: ~${cap} words per page · ${rows !== cols ? "Rectangular" : "Square"} layout`;
+    }
+    if (dom.wsWordsPerPageSlider) {
+        dom.wsWordsPerPageSlider.max = Math.max(30, cap + 8);
+    }
+}
+
+// Update Word Search AI Prompt Box
+function updateWsPromptBox() {
+    if (!dom.wsPromptCodeBox || !dom.wsPromptTypeSel) return;
+    const pType = dom.wsPromptTypeSel.value || "Themed CSV";
+    const langCfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+    const promptText = langCfg.prompts ? (langCfg.prompts[pType] || "") : "";
+    dom.wsPromptCodeBox.textContent = promptText;
+}
+
+// Update Active Language configuration
+function updateWsLanguage(langKey) {
+    state.wsLanguage = langKey;
+    const cfg = LANGUAGE_CONFIGS[langKey] || LANGUAGE_CONFIGS["English"];
+    if (dom.wsLangBadge) {
+        dom.wsLangBadge.innerHTML = `${cfg.flag} <b>${cfg.label}</b>: ${cfg.badge_info}`;
+    }
+    if (dom.wsDownThemedCsv) {
+        dom.wsDownThemedCsv.textContent = `📥 Themed CSV (${cfg.flag})`;
+    }
+    if (dom.wsDownSimpleCsv) {
+        dom.wsDownSimpleCsv.textContent = `📥 Simple CSV (${cfg.flag})`;
+    }
+    updateWsPromptBox();
+}
+
+// Switch between Studio Modes (Sudoku vs Word Search)
+function setStudioMode(mode) {
+    state.mode = mode;
+    if (mode === "sudoku") {
+        dom.modeSudokuBtn.classList.add("active");
+        dom.modeWordsearchBtn.classList.remove("active");
+        if (dom.sdkVolumeSection) dom.sdkVolumeSection.style.display = "block";
+        if (dom.wsVolumeSection) dom.wsVolumeSection.style.display = "none";
+        if (dom.sdkStylingSection) dom.sdkStylingSection.style.display = "block";
+        if (dom.wsStylingSection) dom.wsStylingSection.style.display = "none";
+        if (dom.sdkRulesSection) dom.sdkRulesSection.style.display = "block";
+        if (dom.wsRulesSection) dom.wsRulesSection.style.display = "none";
+    } else {
+        dom.modeWordsearchBtn.classList.add("active");
+        dom.modeSudokuBtn.classList.remove("active");
+        if (dom.sdkVolumeSection) dom.sdkVolumeSection.style.display = "none";
+        if (dom.wsVolumeSection) dom.wsVolumeSection.style.display = "block";
+        if (dom.sdkStylingSection) dom.sdkStylingSection.style.display = "none";
+        if (dom.wsStylingSection) dom.wsStylingSection.style.display = "block";
+        if (dom.sdkRulesSection) dom.sdkRulesSection.style.display = "none";
+        if (dom.wsRulesSection) dom.wsRulesSection.style.display = "block";
+    }
+    state.currentPage = 1;
+    refreshStudio();
+}
+
 // Generate Puzzles Batch (Sudoku or Word Search)
 function updatePuzzlesBatch() {
     if (state.mode === "sudoku") {
@@ -244,28 +437,92 @@ function updatePuzzlesBatch() {
             titleTemplate: state.titleTemplate
         });
     } else {
-        // Word Search Batch
-        const baseWords = state.wsWords.length > 0 ? state.wsWords : SAMPLE_WORD_BANKS.animals;
+        // Word Search Batch (Multi-theme & Chunks support)
+        let groups = {};
+        if (state.wsSource === "csv" && state.wsCsvContent) {
+            groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+        } else {
+            const raw = state.wsRawText || LANGUAGE_CONFIGS[state.wsLanguage]?.sample_words || "";
+            groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+        }
+
+        // Group into words_per_page chunks
+        const baseChunks = [];
+        const wpp = state.wsWordsPerPage || 12;
+        for (const [theme, words] of Object.entries(groups)) {
+            const cleaned = words.filter(w => w.length >= 3);
+            for (let start = 0; start < cleaned.length; start += wpp) {
+                const chunk = cleaned.slice(start, start + wpp);
+                if (chunk.length > 0) {
+                    baseChunks.push({ theme, words: chunk });
+                }
+            }
+        }
+
+        if (baseChunks.length === 0) {
+            baseChunks.push({
+                theme: state.wsThemeInput || "Animals",
+                words: ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"]
+            });
+        }
+
+        // Determine target count
+        let totalNeeded = baseChunks.length;
+        if (state.wsTargetCountEnforced) {
+            totalNeeded = state.wsPuzzleCount || 12;
+        } else if (state.wsSource === "paste" && state.wsPuzzleCount) {
+            if (baseChunks.length === 1 && state.wsPuzzleCount > 1) {
+                totalNeeded = state.wsPuzzleCount;
+            }
+        }
+
+        // Determine grid rows & cols
+        let rows = 12, cols = 10;
+        if (state.wsGridChoice === "auto") {
+            rows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
+            cols = rows;
+        } else if (state.wsGridChoice === "custom") {
+            rows = state.wsRows || 12;
+            cols = state.wsCols || 10;
+        } else if (state.wsGridChoice && state.wsGridChoice.includes("x")) {
+            const parts = state.wsGridChoice.split("x").map(Number);
+            rows = parts[0] || 12;
+            cols = parts[1] || 10;
+        }
+
+        const langCfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+        let fillAlpha = langCfg.fill_alphabet || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        if (state.wsAccentMode === "Strip All Accents (A-Z)") {
+            fillAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        }
+
         const generated = [];
+        for (let i = 0; i < totalNeeded; i++) {
+            const pNum = (state.wsStartNumber || 1) + i;
+            const item = baseChunks[i % baseChunks.length];
+            const themeTitle = (totalNeeded > baseChunks.length && baseChunks.length > 1)
+                ? `${item.theme} #${Math.floor(i / baseChunks.length) + 1}`
+                : (baseChunks.length === 1 && totalNeeded > 1
+                    ? `${item.theme} #${pNum}`
+                    : item.theme);
 
-        for (let i = 0; i < state.puzzleCount; i++) {
-            const pNum = state.startNumber + i;
-            const pTitle = state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", `Theme ${pNum}`);
-
-            // Shuffle words per puzzle so each page has varied arrangements
-            const shuffled = [...baseWords].sort(() => Math.sin(state.wsSeed + i * 41) - 0.5);
+            const pTitle = state.wsTitleTemplate
+                ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
+                : themeTitle;
 
             const puzzle = generateWordSearchPuzzle({
-                words: shuffled,
-                width: state.wsGridDim,
-                height: state.wsGridDim,
+                words: item.words,
+                width: cols,
+                height: rows,
                 difficulty: state.wsDifficulty,
                 language: state.wsLanguage,
                 title: pTitle,
-                seed: state.wsSeed + i * 19
+                fillAlphabet: fillAlpha,
+                seed: (state.wsSeed || 42) + i * 19
             });
 
             puzzle.puzzleId = pNum;
+            puzzle.theme = item.theme;
             puzzle.difficultyLabel = state.wsDifficulty.toUpperCase();
             generated.push(puzzle);
         }
@@ -288,13 +545,14 @@ function updateMetrics() {
 
         dom.exportSummary.textContent = `${state.puzzleCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page · 300 DPI Commercial Print Ready`;
     } else {
-        dom.metricType.textContent = "Word Search";
+        const langShort = (state.wsLanguage || "English").split(" ")[0];
+        dom.metricType.textContent = `Word Search (${langShort})`;
         dom.metricDiff.textContent = state.wsDifficulty.toUpperCase();
-        dom.metricGrid.textContent = `${state.wsGridDim} × ${state.wsGridDim}`;
+        dom.metricGrid.textContent = state.puzzles[0] ? `${state.puzzles[0].height} × ${state.puzzles[0].width}` : `${state.wsRows} × ${state.wsCols}`;
         dom.metricClues.textContent = state.puzzles[0] && state.puzzles[0].placedWords ? state.puzzles[0].placedWords.length : "-";
         dom.metricGamesPage.textContent = `1 (${state.wsWordCols} cols)`;
 
-        dom.exportSummary.textContent = `${state.puzzleCount} Word Searches · ${state.trimChoice} · 300 DPI Commercial Print Ready`;
+        dom.exportSummary.textContent = `${state.puzzles.length} Word Searches · ${state.wsTrimChoice} · 300 DPI Commercial Print Ready`;
     }
 }
 
@@ -340,9 +598,10 @@ function renderStage() {
     } else {
         // Word Search mode
         if (state.viewMode === "book_page") {
-            totalPages = state.puzzles.length; // 1 puzzle per page standard
+            totalPages = state.puzzles.length;
         } else if (state.viewMode === "solution_page") {
-            totalPages = Math.max(1, Math.ceil(state.puzzles.length / 4)); // 4 solutions per page
+            const spp = state.wsSolutionsPerPage || 4;
+            totalPages = Math.max(1, Math.ceil(state.puzzles.length / spp));
         } else {
             totalPages = state.puzzles.length;
         }
@@ -361,7 +620,8 @@ function renderStage() {
         } else if (state.viewMode === "solution_page") {
             opt.textContent = `Solutions Page ${p}/${totalPages}`;
         } else {
-            opt.textContent = `Puzzle #${state.startNumber + p - 1}`;
+            const pId = state.mode === "sudoku" ? (state.startNumber + p - 1) : (state.wsStartNumber + p - 1);
+            opt.textContent = `Puzzle #${pId}`;
         }
         if (p === state.currentPage) opt.selected = true;
         dom.stagePageSel.appendChild(opt);
@@ -518,6 +778,7 @@ function renderSudokuStage(ctx, totalPages) {
 function renderWordSearchStage(ctx, totalPages) {
     const pIdx = state.currentPage - 1;
     const p = state.puzzles[pIdx] || state.puzzles[0];
+    if (!p) return;
 
     let dTxt = null;
     let calCanvas = null;
@@ -542,13 +803,15 @@ function renderWordSearchStage(ctx, totalPages) {
     if (state.viewMode === "book_page") {
         const pageCnv = renderWordSearchBookPageCanvas({
             puzzle: p,
-            style: state.activeStyle,
+            style: state.wsActiveStyle,
             pageNum: state.currentPage,
             totalPages,
             dpi: 150,
             dateText: dTxt,
             calendarCanvas: calCanvas,
-            wordColumns: state.wsWordCols
+            wordColumns: state.wsWordCols,
+            showWordBank: state.wsShowWordBank,
+            wordBankTitle: LANGUAGE_CONFIGS[state.wsLanguage]?.word_bank_title
         });
 
         dom.mainCanvas.width = pageCnv.width;
@@ -556,13 +819,13 @@ function renderWordSearchStage(ctx, totalPages) {
         ctx.drawImage(pageCnv, 0, 0);
 
     } else if (state.viewMode === "solution_page") {
-        const solPerPage = 4;
+        const solPerPage = state.wsSolutionsPerPage || 4;
         const startIdx = (state.currentPage - 1) * solPerPage;
         const sSlice = state.puzzles.slice(startIdx, startIdx + solPerPage);
 
         const solCnv = renderWordSearchSolutionPageCanvas({
             puzzlesSlice: sSlice,
-            style: state.activeStyle,
+            style: state.wsActiveStyle,
             solutionsPerPage: solPerPage,
             pageNum: state.currentPage,
             totalPages: Math.ceil(state.puzzles.length / solPerPage),
@@ -576,12 +839,13 @@ function renderWordSearchStage(ctx, totalPages) {
     } else if (state.viewMode === "single_puzzle") {
         const pCnv = renderWordSearchGridCanvas({
             puzzle: p,
-            style: state.activeStyle,
+            style: state.wsActiveStyle,
             cellMm: 10.0,
             dpi: 150,
             solution: false,
             includeHeader: true,
-            dateText: dTxt
+            dateText: dTxt,
+            showGridLines: true
         });
 
         dom.mainCanvas.width = pCnv.width;
@@ -591,12 +855,13 @@ function renderWordSearchStage(ctx, totalPages) {
     } else if (state.viewMode === "single_solution") {
         const sCnv = renderWordSearchGridCanvas({
             puzzle: p,
-            style: state.activeStyle,
+            style: state.wsActiveStyle,
             cellMm: 10.0,
             dpi: 150,
             solution: true,
             includeHeader: true,
-            dateText: dTxt
+            dateText: dTxt,
+            showGridLines: true
         });
 
         dom.mainCanvas.width = sCnv.width;
@@ -616,25 +881,8 @@ function refreshStudio() {
 // Set Up Event Handlers
 function setupEvents() {
     // Mode Switcher (Sudoku vs Word Search)
-    dom.modeSudokuBtn.addEventListener("click", () => {
-        state.mode = "sudoku";
-        dom.modeSudokuBtn.classList.add("active");
-        dom.modeWordsearchBtn.classList.remove("active");
-        dom.sdkRulesSection.style.display = "block";
-        dom.wsRulesSection.style.display = "none";
-        state.currentPage = 1;
-        refreshStudio();
-    });
-
-    dom.modeWordsearchBtn.addEventListener("click", () => {
-        state.mode = "wordsearch";
-        dom.modeWordsearchBtn.classList.add("active");
-        dom.modeSudokuBtn.classList.remove("active");
-        dom.sdkRulesSection.style.display = "none";
-        dom.wsRulesSection.style.display = "block";
-        state.currentPage = 1;
-        refreshStudio();
-    });
+    dom.modeSudokuBtn.addEventListener("click", () => setStudioMode("sudoku"));
+    dom.modeWordsearchBtn.addEventListener("click", () => setStudioMode("wordsearch"));
 
     // Theme Switcher (Dark / Light)
     dom.themeToggleBtn.addEventListener("click", () => {
@@ -652,7 +900,7 @@ function setupEvents() {
             dom.seedInput.value = state.seed;
         } else {
             state.wsSeed = randSeed;
-            dom.wsSeedInput.value = state.wsSeed;
+            if (dom.wsSeedInput) dom.wsSeedInput.value = state.wsSeed;
         }
         state.currentPage = 1;
         refreshStudio();
@@ -717,11 +965,13 @@ function setupEvents() {
         renderStage();
     });
 
-    // Volume Controls
+    // ==========================================
+    // Sudoku Volume Controls
+    // ==========================================
     dom.countInput.addEventListener("input", (e) => {
         state.puzzleCount = Math.max(1, Math.min(366, parseInt(e.target.value, 10) || 1));
         dom.countBadge.textContent = state.puzzleCount;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.countPresetBtns.forEach(btn => {
@@ -732,28 +982,28 @@ function setupEvents() {
             state.puzzleCount = cnt;
             dom.countInput.value = cnt;
             dom.countBadge.textContent = cnt;
-            refreshStudio();
+            if (state.mode === "sudoku") refreshStudio();
         });
     });
 
     dom.startNumInput.addEventListener("input", (e) => {
         state.startNumber = Math.max(1, parseInt(e.target.value, 10) || 1);
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.puzPerPageSel.addEventListener("change", (e) => {
         state.puzzlesPerPage = parseInt(e.target.value, 10);
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.solPerPageSel.addEventListener("change", (e) => {
         state.solutionsPerPage = parseInt(e.target.value, 10);
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.trimChoiceSel.addEventListener("change", (e) => {
         state.trimChoice = e.target.value;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.sameExcelTog.addEventListener("change", (e) => {
@@ -763,10 +1013,86 @@ function setupEvents() {
 
     dom.instructionsTog.addEventListener("change", (e) => {
         state.includeInstructions = e.target.checked;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
+    // ==========================================
+    // Word Search Volume Controls
+    // ==========================================
+    if (dom.wsCountInput) {
+        dom.wsCountInput.addEventListener("input", (e) => {
+            state.wsPuzzleCount = Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 1));
+            if (dom.wsCountBadge) dom.wsCountBadge.textContent = state.wsPuzzleCount;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsCountPresetBtns) {
+        dom.wsCountPresetBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                dom.wsCountPresetBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const cnt = parseInt(btn.dataset.count, 10);
+                state.wsPuzzleCount = cnt;
+                if (dom.wsCountInput) dom.wsCountInput.value = cnt;
+                if (dom.wsCountBadge) dom.wsCountBadge.textContent = cnt;
+                if (state.mode === "wordsearch") refreshStudio();
+            });
+        });
+    }
+
+    if (dom.wsStartNum) {
+        dom.wsStartNum.addEventListener("input", (e) => {
+            state.wsStartNumber = Math.max(1, parseInt(e.target.value, 10) || 1);
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsSolPerPageSel) {
+        dom.wsSolPerPageSel.addEventListener("change", (e) => {
+            state.wsSolutionsPerPage = parseInt(e.target.value, 10);
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsTrimChoiceSel) {
+        dom.wsTrimChoiceSel.addEventListener("change", (e) => {
+            state.wsTrimChoice = e.target.value;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsWordColsSel) {
+        dom.wsWordColsSel.addEventListener("change", (e) => {
+            state.wsWordCols = parseInt(e.target.value, 10);
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsShowBankTog) {
+        dom.wsShowBankTog.addEventListener("change", (e) => {
+            state.wsShowWordBank = e.target.checked;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsSameExcelTog) {
+        dom.wsSameExcelTog.addEventListener("change", (e) => {
+            state.wsSameExcel = e.target.checked;
+            if (dom.wsSolPerPageSel) dom.wsSolPerPageSel.disabled = state.wsSameExcel;
+        });
+    }
+
+    if (dom.wsTargetCountTog) {
+        dom.wsTargetCountTog.addEventListener("change", (e) => {
+            state.wsTargetCountEnforced = e.target.checked;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    // ==========================================
     // Date & Calendar Controls
+    // ==========================================
     dom.dateEnabledTog.addEventListener("change", (e) => {
         state.dateEnabled = e.target.checked;
         dom.dateSubpanel.style.display = state.dateEnabled ? "flex" : "none";
@@ -856,7 +1182,9 @@ function setupEvents() {
         refreshStudio();
     });
 
-    // Audience Style Presets
+    // ==========================================
+    // Sudoku Style Controls
+    // ==========================================
     dom.audiencePillBtns.forEach(btn => {
         btn.addEventListener("click", () => {
             dom.audiencePillBtns.forEach(b => b.classList.remove("active"));
@@ -871,138 +1199,459 @@ function setupEvents() {
                 dom.innerLwInput.value = state.activeStyle.innerLineWidth;
                 dom.fontScaleInput.value = state.activeStyle.fontScale;
                 dom.solutionModeSel.value = state.activeStyle.solutionMode;
-                renderStage();
+                if (state.mode === "sudoku") renderStage();
             }
         });
     });
 
-    // Manual Styling Inputs
     dom.cellStyleSel.addEventListener("change", (e) => {
         state.activeStyle.cellStyle = e.target.value;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.shadingModeSel.addEventListener("change", (e) => {
         state.activeStyle.shadingMode = e.target.value;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.outerLwInput.addEventListener("input", (e) => {
         state.activeStyle.outerLineWidth = parseFloat(e.target.value) || 1.4;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.blockLwInput.addEventListener("input", (e) => {
         state.activeStyle.blockLineWidth = parseFloat(e.target.value) || 1.0;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.innerLwInput.addEventListener("input", (e) => {
         state.activeStyle.innerLineWidth = parseFloat(e.target.value) || 0.4;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.fontScaleInput.addEventListener("input", (e) => {
         state.activeStyle.fontScale = parseInt(e.target.value, 10) || 64;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
     dom.solutionModeSel.addEventListener("change", (e) => {
         state.activeStyle.solutionMode = e.target.value;
-        renderStage();
+        if (state.mode === "sudoku") renderStage();
     });
 
+    // ==========================================
+    // Word Search Style Controls
+    // ==========================================
+    if (dom.wsAudiencePresetBtns) {
+        dom.wsAudiencePresetBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                dom.wsAudiencePresetBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const presetKey = btn.dataset.preset;
+                state.wsActivePreset = presetKey;
+                if (WS_PRESETS[presetKey]) {
+                    state.wsActiveStyle = { ...WS_PRESETS[presetKey] };
+                    if (dom.wsCellStyleSel) dom.wsCellStyleSel.value = state.wsActiveStyle.cellStyle;
+                    if (dom.wsSolStyleSel) dom.wsSolStyleSel.value = state.wsActiveStyle.solutionStyle;
+                    if (dom.wsLineWidthInput) dom.wsLineWidthInput.value = state.wsActiveStyle.gridLineWidth;
+                    if (dom.wsLineWVal) dom.wsLineWVal.textContent = state.wsActiveStyle.gridLineWidth + "mm";
+                    if (dom.wsLetterFontSel) dom.wsLetterFontSel.value = state.wsActiveStyle.letterFont;
+                    if (dom.wsFontScaleSlider) dom.wsFontScaleSlider.value = state.wsActiveStyle.fontScale;
+                    if (dom.wsFontScaleVal) dom.wsFontScaleVal.textContent = state.wsActiveStyle.fontScale + "%";
+                    if (dom.wsThemeBadge) dom.wsThemeBadge.textContent = state.wsActiveStyle.description;
+
+                    // Match line color select
+                    const lc = state.wsActiveStyle.gridLineColor;
+                    if (dom.wsLineColorSel) {
+                        const hasOpt = Array.from(dom.wsLineColorSel.options).some(o => o.value === lc);
+                        if (hasOpt) {
+                            dom.wsLineColorSel.value = lc;
+                            if (dom.wsCustomLineHex) dom.wsCustomLineHex.style.display = "none";
+                        } else {
+                            dom.wsLineColorSel.value = "custom";
+                            if (dom.wsCustomLineHex) {
+                                dom.wsCustomLineHex.style.display = "block";
+                                dom.wsCustomLineHex.value = lc;
+                            }
+                        }
+                    }
+
+                    // Match letter color select
+                    const ltc = state.wsActiveStyle.letterColor;
+                    if (dom.wsLetterColorSel) {
+                        const hasOpt = Array.from(dom.wsLetterColorSel.options).some(o => o.value === ltc);
+                        if (hasOpt) {
+                            dom.wsLetterColorSel.value = ltc;
+                            if (dom.wsCustomLetterHex) dom.wsCustomLetterHex.style.display = "none";
+                        } else {
+                            dom.wsLetterColorSel.value = "custom";
+                            if (dom.wsCustomLetterHex) {
+                                dom.wsCustomLetterHex.style.display = "block";
+                                dom.wsCustomLetterHex.value = ltc;
+                            }
+                        }
+                    }
+
+                    if (state.mode === "wordsearch") renderStage();
+                }
+            });
+        });
+    }
+
+    if (dom.wsCellStyleSel) {
+        dom.wsCellStyleSel.addEventListener("change", (e) => {
+            state.wsActiveStyle.cellStyle = e.target.value;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsSolStyleSel) {
+        dom.wsSolStyleSel.addEventListener("change", (e) => {
+            state.wsActiveStyle.solutionStyle = e.target.value;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsLineColorSel) {
+        dom.wsLineColorSel.addEventListener("change", (e) => {
+            if (e.target.value === "custom") {
+                if (dom.wsCustomLineHex) dom.wsCustomLineHex.style.display = "block";
+            } else {
+                if (dom.wsCustomLineHex) dom.wsCustomLineHex.style.display = "none";
+                state.wsActiveStyle.gridLineColor = e.target.value;
+                if (state.mode === "wordsearch") renderStage();
+            }
+        });
+    }
+
+    if (dom.wsCustomLineHex) {
+        dom.wsCustomLineHex.addEventListener("input", (e) => {
+            state.wsActiveStyle.gridLineColor = e.target.value || "#9DA49F";
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsLineWidthInput) {
+        dom.wsLineWidthInput.addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value) || 0.6;
+            state.wsActiveStyle.gridLineWidth = val;
+            if (dom.wsLineWVal) dom.wsLineWVal.textContent = `${val}mm`;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsLetterFontSel) {
+        dom.wsLetterFontSel.addEventListener("change", (e) => {
+            state.wsActiveStyle.letterFont = e.target.value;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsLetterColorSel) {
+        dom.wsLetterColorSel.addEventListener("change", (e) => {
+            if (e.target.value === "custom") {
+                if (dom.wsCustomLetterHex) dom.wsCustomLetterHex.style.display = "block";
+            } else {
+                if (dom.wsCustomLetterHex) dom.wsCustomLetterHex.style.display = "none";
+                state.wsActiveStyle.letterColor = e.target.value;
+                if (state.mode === "wordsearch") renderStage();
+            }
+        });
+    }
+
+    if (dom.wsCustomLetterHex) {
+        dom.wsCustomLetterHex.addEventListener("input", (e) => {
+            state.wsActiveStyle.letterColor = e.target.value || "#202A26";
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    if (dom.wsFontScaleSlider) {
+        dom.wsFontScaleSlider.addEventListener("input", (e) => {
+            const val = parseInt(e.target.value, 10) || 62;
+            state.wsActiveStyle.fontScale = val;
+            if (dom.wsFontScaleVal) dom.wsFontScaleVal.textContent = `${val}%`;
+            if (state.mode === "wordsearch") renderStage();
+        });
+    }
+
+    // ==========================================
     // Sudoku Generator Rules Controls
+    // ==========================================
     dom.typeSel.addEventListener("change", (e) => {
         state.sudokuType = e.target.value;
         dom.wordokuGroup.style.display = state.sudokuType === SudokuType.WORDOKU_9X9 ? "flex" : "none";
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.wordokuWordInput.addEventListener("input", (e) => {
         state.wordokuWord = e.target.value;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.diffSel.addEventListener("change", (e) => {
         state.difficulty = e.target.value;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.seedInput.addEventListener("input", (e) => {
         state.seed = parseInt(e.target.value, 10) || 42;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.titleTplInput.addEventListener("input", (e) => {
         state.titleTemplate = e.target.value || "Sudoku #{num}";
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.symmetricTog.addEventListener("change", (e) => {
         state.symmetric = e.target.checked;
-        refreshStudio();
+        if (state.mode === "sudoku") refreshStudio();
     });
 
-    // Word Search Controls
-    dom.wsThemePillBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            dom.wsThemePillBtns.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            state.wsTheme = btn.dataset.theme;
+    // ==========================================
+    // Word Search Rules & Content Controls
+    // ==========================================
+    // Step 1: Language & Accents
+    if (dom.wsLangSelect) {
+        dom.wsLangSelect.addEventListener("change", (e) => {
+            const lang = e.target.value;
+            updateWsLanguage(lang);
+            const cfg = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS["English"];
+            state.wsThemeInput = cfg.default_theme;
+            if (dom.wsThemeInput) dom.wsThemeInput.value = state.wsThemeInput;
+            state.wsRawText = cfg.sample_words;
+            if (dom.wsWordListInput) dom.wsWordListInput.value = state.wsRawText;
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
 
-            if (state.wsTheme !== "custom" && SAMPLE_WORD_BANKS[state.wsTheme]) {
-                state.wsWords = [...SAMPLE_WORD_BANKS[state.wsTheme]];
-                dom.wsWordListInput.value = state.wsWords.join("\n");
-                dom.wsWordCountBadge.textContent = `${state.wsWords.length} words`;
-                refreshStudio();
+    if (dom.wsAccentModeSel) {
+        dom.wsAccentModeSel.addEventListener("change", (e) => {
+            state.wsAccentMode = e.target.value;
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsResetSampleBtn) {
+        dom.wsResetSampleBtn.addEventListener("click", () => {
+            const cfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+            state.wsThemeInput = cfg.default_theme;
+            if (dom.wsThemeInput) dom.wsThemeInput.value = state.wsThemeInput;
+            state.wsRawText = cfg.sample_words;
+            if (dom.wsWordListInput) dom.wsWordListInput.value = state.wsRawText;
+            state.wsSource = "paste";
+            if (dom.wsSrcPasteBtn) dom.wsSrcPasteBtn.classList.add("active");
+            if (dom.wsSrcCsvBtn) dom.wsSrcCsvBtn.classList.remove("active");
+            if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "block";
+            if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "none";
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    // Step 2: Source pills (Paste vs CSV)
+    if (dom.wsSourcePillBtns) {
+        dom.wsSourcePillBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                dom.wsSourcePillBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                state.wsSource = btn.dataset.source;
+                if (state.wsSource === "paste") {
+                    if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "block";
+                    if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "none";
+                } else {
+                    if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "none";
+                    if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "flex";
+                }
+                updateWsSummaryCard();
+                if (state.mode === "wordsearch") refreshStudio();
+            });
+        });
+    }
+
+    if (dom.wsThemeInput) {
+        dom.wsThemeInput.addEventListener("input", (e) => {
+            state.wsThemeInput = e.target.value;
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsSeedInput) {
+        dom.wsSeedInput.addEventListener("input", (e) => {
+            state.wsSeed = parseInt(e.target.value, 10) || 42;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsShuffleSeedBtn) {
+        dom.wsShuffleSeedBtn.addEventListener("click", () => {
+            state.wsSeed = Math.floor(Math.random() * 900000) + 1000;
+            if (dom.wsSeedInput) dom.wsSeedInput.value = state.wsSeed;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    // CSV File Drag & Drop + Click
+    if (dom.wsCsvDropzone && dom.wsCsvFileInput) {
+        dom.wsCsvDropzone.addEventListener("click", () => dom.wsCsvFileInput.click());
+
+        dom.wsCsvDropzone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dom.wsCsvDropzone.style.borderColor = "var(--primary)";
+        });
+
+        dom.wsCsvDropzone.addEventListener("dragleave", () => {
+            dom.wsCsvDropzone.style.borderColor = "var(--border-subtle)";
+        });
+
+        dom.wsCsvDropzone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dom.wsCsvDropzone.style.borderColor = "var(--border-subtle)";
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleCsvFile(e.dataTransfer.files[0]);
             }
         });
-    });
 
-    dom.wsWordListInput.addEventListener("input", (e) => {
-        const raw = e.target.value;
-        const words = raw
-            .split(/[\n,]+/)
-            .map(w => w.trim().toUpperCase())
-            .filter(w => w.length >= 3);
+        dom.wsCsvFileInput.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleCsvFile(e.target.files[0]);
+            }
+        });
+    }
 
-        state.wsWords = words;
-        dom.wsWordCountBadge.textContent = `${words.length} words`;
-        refreshStudio();
-    });
+    function handleCsvFile(file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            state.wsCsvContent = evt.target.result;
+            state.wsCsvFileName = file.name;
+            if (dom.wsCsvFileLabel) {
+                dom.wsCsvFileLabel.textContent = `📄 ${file.name}`;
+            }
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        };
+        reader.readAsText(file);
+    }
 
-    dom.wsGridDimSel.addEventListener("change", (e) => {
-        state.wsGridDim = parseInt(e.target.value, 10);
-        refreshStudio();
-    });
+    if (dom.wsWordListInput) {
+        dom.wsWordListInput.addEventListener("input", (e) => {
+            state.wsRawText = e.target.value;
+            updateWsSummaryCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
 
-    dom.wsDifficultySel.addEventListener("change", (e) => {
-        state.wsDifficulty = e.target.value;
-        refreshStudio();
-    });
+    // Sample CSV Downloads
+    if (dom.wsDownThemedCsv) {
+        dom.wsDownThemedCsv.addEventListener("click", () => {
+            const cfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+            const blob = new Blob([cfg.themed_csv], { type: "text/csv;charset=utf-8;" });
+            saveAs(blob, `themed_${cfg.default_theme.toLowerCase()}_sample.csv`);
+        });
+    }
 
-    dom.wsLangSel.addEventListener("change", (e) => {
-        state.wsLanguage = e.target.value;
-        refreshStudio();
-    });
+    if (dom.wsDownSimpleCsv) {
+        dom.wsDownSimpleCsv.addEventListener("click", () => {
+            const cfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+            const blob = new Blob([cfg.simple_csv], { type: "text/csv;charset=utf-8;" });
+            saveAs(blob, `simple_${cfg.default_theme.toLowerCase()}_sample.csv`);
+        });
+    }
 
-    dom.wsWordColsSel.addEventListener("change", (e) => {
-        state.wsWordCols = parseInt(e.target.value, 10);
-        renderStage();
-    });
+    // AI Prompts Expander
+    if (dom.wsAiExpanderHdr) {
+        dom.wsAiExpanderHdr.addEventListener("click", () => {
+            const isOpen = dom.wsAiExpanderBody.classList.toggle("open");
+            dom.wsAiExpanderBody.style.display = isOpen ? "flex" : "none";
+            dom.wsAiExpIcon.textContent = isOpen ? "▲" : "▼";
+        });
+    }
 
-    dom.wsSeedInput.addEventListener("input", (e) => {
-        state.wsSeed = parseInt(e.target.value, 10) || 101;
-        refreshStudio();
-    });
+    if (dom.wsPromptTypeSel) {
+        dom.wsPromptTypeSel.addEventListener("change", () => updateWsPromptBox());
+    }
 
-    dom.wsTitleTplInput.addEventListener("input", (e) => {
-        state.wsTitleTemplate = e.target.value || "Word Search #{num}";
-        refreshStudio();
-    });
+    if (dom.wsCopyPromptBtn) {
+        dom.wsCopyPromptBtn.addEventListener("click", () => {
+            if (dom.wsPromptCodeBox && dom.wsPromptCodeBox.textContent) {
+                navigator.clipboard.writeText(dom.wsPromptCodeBox.textContent).then(() => {
+                    const original = dom.wsCopyPromptBtn.textContent;
+                    dom.wsCopyPromptBtn.textContent = "✅ Copied!";
+                    setTimeout(() => { dom.wsCopyPromptBtn.textContent = original; }, 1500);
+                });
+            }
+        });
+    }
 
+    // Step 3: Grid Dimensions & Capacity
+    if (dom.wsGridDimSelect) {
+        dom.wsGridDimSelect.addEventListener("change", (e) => {
+            state.wsGridChoice = e.target.value;
+            if (state.wsGridChoice === "custom") {
+                if (dom.wsCustomDimsRow) dom.wsCustomDimsRow.style.display = "flex";
+                state.wsRows = parseInt(dom.wsCustRows.value, 10) || 12;
+                state.wsCols = parseInt(dom.wsCustCols.value, 10) || 10;
+            } else {
+                if (dom.wsCustomDimsRow) dom.wsCustomDimsRow.style.display = "none";
+                if (state.wsGridChoice === "auto") {
+                    state.wsRows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
+                    state.wsCols = state.wsRows;
+                } else if (state.wsGridChoice.includes("x")) {
+                    const parts = state.wsGridChoice.split("x").map(Number);
+                    state.wsRows = parts[0] || 12;
+                    state.wsCols = parts[1] || 10;
+                }
+            }
+            updateWsCapacityCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsDifficultySelect) {
+        dom.wsDifficultySelect.addEventListener("change", (e) => {
+            state.wsDifficulty = e.target.value;
+            if (state.wsGridChoice === "auto") {
+                state.wsRows = state.wsDifficulty === "easy" ? 10 : (state.wsDifficulty === "medium" ? 13 : 16);
+                state.wsCols = state.wsRows;
+                updateWsCapacityCard();
+            }
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsCustRows) {
+        dom.wsCustRows.addEventListener("input", (e) => {
+            state.wsRows = parseInt(e.target.value, 10) || 12;
+            if (dom.wsCustRowsVal) dom.wsCustRowsVal.textContent = state.wsRows;
+            updateWsCapacityCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsCustCols) {
+        dom.wsCustCols.addEventListener("input", (e) => {
+            state.wsCols = parseInt(e.target.value, 10) || 10;
+            if (dom.wsCustColsVal) dom.wsCustColsVal.textContent = state.wsCols;
+            updateWsCapacityCard();
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    if (dom.wsWordsPerPageSlider) {
+        dom.wsWordsPerPageSlider.addEventListener("input", (e) => {
+            state.wsWordsPerPage = parseInt(e.target.value, 10) || 12;
+            if (dom.wsWordsPerPageVal) dom.wsWordsPerPageVal.textContent = state.wsWordsPerPage;
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
+    // ==========================================
     // Exports
+    // ==========================================
     dom.btnExportCanva.addEventListener("click", handleExportCanva);
     dom.btnExportSolutions.addEventListener("click", handleExportSolutions);
     dom.btnExportPdf.addEventListener("click", handleExportPdf);
@@ -1095,7 +1744,7 @@ async function renderCanvaBulkImages(onProgress) {
         } else {
             const gridCnv = renderWordSearchGridCanvas({
                 puzzle: p,
-                style: state.activeStyle,
+                style: state.wsActiveStyle,
                 cellMm: 9.0,
                 dpi: 150,
                 solution: false,
@@ -1104,10 +1753,10 @@ async function renderCanvaBulkImages(onProgress) {
             });
             gridImages.push(gridCnv.toDataURL("image/png"));
 
-            if (state.sameExcel) {
+            if (state.wsSameExcel) {
                 const solCnv = renderWordSearchGridCanvas({
                     puzzle: p,
-                    style: state.activeStyle,
+                    style: state.wsActiveStyle,
                     cellMm: 9.0,
                     dpi: 150,
                     solution: true,
@@ -1174,7 +1823,7 @@ async function handleExportCanva() {
         } else {
             buffer = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
-                includeSolutionInSameExcel: state.sameExcel,
+                includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
@@ -1277,12 +1926,14 @@ async function handleExportPdf() {
         } else {
             pdfBuffer = await buildWordSearchKdpPdf({
                 puzzles: state.puzzles,
-                style: state.activeStyle,
-                solutionsPerPage: 4,
-                trimChoice: state.trimChoice,
+                style: state.wsActiveStyle,
+                solutionsPerPage: state.wsSolutionsPerPage || 4,
+                trimChoice: state.wsTrimChoice,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 calendarCanvases,
                 wordColumns: state.wsWordCols,
+                showWordBank: state.wsShowWordBank,
+                wordBankTitle: LANGUAGE_CONFIGS[state.wsLanguage]?.word_bank_title,
                 onProgress: (p) => setProgress(p, `Rendering PDF book pages: ${p}%`)
             });
             filename = "wordsearch_kdp_interior.pdf";
@@ -1409,7 +2060,7 @@ async function handleExportZip() {
                 // Word Search Grid Image (300 DPI)
                 gridCnv = renderWordSearchGridCanvas({
                     puzzle: p,
-                    style: state.activeStyle,
+                    style: state.wsActiveStyle,
                     cellMm: 9.0,
                     dpi: 300,
                     solution: false,
@@ -1423,7 +2074,7 @@ async function handleExportZip() {
                 // Word Search Solution Image (300 DPI)
                 solCnv = renderWordSearchGridCanvas({
                     puzzle: p,
-                    style: state.activeStyle,
+                    style: state.wsActiveStyle,
                     cellMm: 9.0,
                     dpi: 300,
                     solution: true,
@@ -1473,7 +2124,7 @@ async function handleExportZip() {
         } else {
             const canvaBuffer = await buildCanvaWordSearchExcel({
                 puzzles: state.puzzles,
-                includeSolutionInSameExcel: state.sameExcel,
+                includeSolutionInSameExcel: state.wsSameExcel,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
@@ -1481,6 +2132,11 @@ async function handleExportZip() {
                 calendarImages
             });
             zip.file("wordsearch_canva_bulk.xlsx", canvaBuffer);
+
+            if (!state.wsSameExcel) {
+                const solBuffer = buildSolutionsOnlyExcel({ puzzles: state.puzzles });
+                zip.file("wordsearch_solutions.xlsx", solBuffer);
+            }
         }
 
         // Generate final ZIP
@@ -1510,8 +2166,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     if (dom.wsWordListInput) {
-        dom.wsWordListInput.value = state.wsWords.join("\n");
-        dom.wsWordCountBadge.textContent = `${state.wsWords.length} words`;
+        dom.wsWordListInput.value = state.wsRawText;
+    }
+    if (dom.wsThemeInput) {
+        dom.wsThemeInput.value = state.wsThemeInput;
     }
 
     if (dom.previewWrapper) {
@@ -1520,6 +2178,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
     populateDateFormats();
     populateCalendarThemes();
+    updateWsLanguage(state.wsLanguage);
+    updateWsSummaryCard();
+    updateWsCapacityCard();
     setupEvents();
     refreshStudio();
 });

@@ -146,6 +146,8 @@ export async function buildWordSearchKdpPdf({
     dateStrings = [],
     calendarCanvases = [],
     wordColumns = 3,
+    showWordBank = true,
+    wordBankTitle = null,
     onProgress = null
 } = {}) {
     if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
@@ -184,7 +186,9 @@ export async function buildWordSearchKdpPdf({
             dpi: 150,
             dateText: dTxt,
             calendarCanvas: cCanvas,
-            wordColumns
+            wordColumns,
+            showWordBank,
+            wordBankTitle
         });
 
         const imgData = pageCanvas.toDataURL("image/jpeg", 0.92);

@@ -65,8 +65,9 @@
             <div class="sidebar-content">
                 <!-- Tab 1: Volume & Layout -->
                 <div class="tab-panel active" id="tab-volume">
-                    <div class="control-section">
-                        <div class="section-label">📚 Book Page Layout & Counts</div>
+                    <!-- Sudoku Volume Section -->
+                    <div class="control-section" id="sdk-volume-section">
+                        <div class="section-label">📚 Sudoku Page Layout & Counts</div>
                         
                         <div class="form-row-2">
                             <div class="form-group">
@@ -142,6 +143,99 @@
                             </div>
                             <label class="switch">
                                 <input type="checkbox" id="sdk-instructions-tog" checked>
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Word Search Volume Section -->
+                    <div class="control-section" id="ws-volume-section" style="display:none;">
+                        <div class="section-label">📚 Word Search Layout & Volume</div>
+                        
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-count-input">Puzzle Pages <span class="hint" id="ws-count-badge">12</span></label>
+                                <input type="number" id="ws-count-input" min="1" max="200" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-start-num">Start Number</label>
+                                <input type="number" id="ws-start-num" min="1" max="9999" value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Quick Count Presets</label>
+                            <div class="preset-pills" id="ws-count-preset-pills">
+                                <button class="preset-pill-btn" data-count="10">10</button>
+                                <button class="preset-pill-btn active" data-count="12">12 (1/Mo)</button>
+                                <button class="preset-pill-btn" data-count="24">24 (2/Mo)</button>
+                                <button class="preset-pill-btn" data-count="50">50</button>
+                                <button class="preset-pill-btn" data-count="100">100</button>
+                                <button class="preset-pill-btn" data-count="200">200</button>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-sol-per-page">Solutions Per Page</label>
+                                <select id="ws-sol-per-page">
+                                    <option value="1">1 solution / page (Giant Print)</option>
+                                    <option value="2">2 solutions / page</option>
+                                    <option value="4" selected>4 solutions / page (Standard KDP)</option>
+                                    <option value="6">6 solutions / page (Compact)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-trim-choice">KDP Book Trim Size</label>
+                                <select id="ws-trim-choice">
+                                    <option value="8.5 x 11 inches (Letter)" selected>8.5 x 11 inches (Letter - KDP Best Seller)</option>
+                                    <option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
+                                    <option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
+                                    <option value="8 x 10 inches">8 x 10 inches</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-word-cols-select">Word Bank Columns</label>
+                                <select id="ws-word-cols-select">
+                                    <option value="1">1 Column</option>
+                                    <option value="2">2 Columns</option>
+                                    <option value="3" selected>3 Columns (Balanced)</option>
+                                    <option value="4">4 Columns (Compact)</option>
+                                    <option value="5">5 Columns</option>
+                                </select>
+                            </div>
+                            <div class="toggle-row" style="margin-top:1.25rem;">
+                                <div>
+                                    <div class="toggle-label">Display Word Bank</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="ws-show-bank-tog" checked>
+                                    <span class="slider-switch"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Include Solution in Same Excel</div>
+                                <div class="toggle-sub">Pairs puzzle & solution images in 1 Canva Bulk row</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="ws-same-excel-tog" checked>
+                                <span class="slider-switch"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Enforce Target Puzzle Count</div>
+                                <div class="toggle-sub">Repeats/chunks themes to hit exact target count</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="ws-target-count-tog">
                                 <span class="slider-switch"></span>
                             </label>
                         </div>
@@ -269,8 +363,9 @@
 
                 <!-- Tab 3: Visual Styling -->
                 <div class="tab-panel" id="tab-styling">
-                    <div class="control-section">
-                        <div class="section-label">🎨 Audience & Style Presets</div>
+                    <!-- Sudoku Styling Section -->
+                    <div class="control-section" id="sdk-styling-section">
+                        <div class="section-label">🎨 Sudoku Audience & Style Presets</div>
                         <div class="preset-pills" id="audience-preset-pills">
                             <button class="preset-pill-btn active" data-preset="adult_classic">👔 Adult Classic</button>
                             <button class="preset-pill-btn" data-preset="senior_large_print">👓 Senior / Large Print</button>
@@ -327,6 +422,86 @@
                                     <option value="normal">Same as Clue Color</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Word Search Styling Section -->
+                    <div class="control-section" id="ws-styling-section" style="display:none;">
+                        <div class="section-label">🎨 Word Search Audience & Visual Presets</div>
+                        <div class="preset-pills" id="ws-audience-preset-pills">
+                            <button class="preset-pill-btn active" data-preset="adult_classic">👔 Adult Classic</button>
+                            <button class="preset-pill-btn" data-preset="senior_large_print">👓 Senior / Large Print</button>
+                            <button class="preset-pill-btn" data-preset="kids_activity">🎈 Kids Activity</button>
+                            <button class="preset-pill-btn" data-preset="classroom_clean">🏫 Classroom Clean</button>
+                            <button class="preset-pill-btn" data-preset="custom">⚙️ Custom</button>
+                        </div>
+                        <div class="theme-badge" id="ws-theme-badge">Crisp traditional grid lines, balanced font proportion, neutral tones. Standard for adult puzzle books.</div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-cell-style-sel">Cell Line Style</label>
+                                <select id="ws-cell-style-sel">
+                                    <option value="grid" selected>Classic Grid Lines</option>
+                                    <option value="boxes">Separated Cell Boxes</option>
+                                    <option value="rounded_boxes">Rounded Cell Boxes (Kids Style)</option>
+                                    <option value="outer_border">Outer Border Only</option>
+                                    <option value="none">None (No Lines / Floating Letters)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-sol-style-sel">Solution Marker Style</label>
+                                <select id="ws-sol-style-sel">
+                                    <option value="capsule" selected>Capsule / Pill Highlighter</option>
+                                    <option value="box">Box Outline</option>
+                                    <option value="bold">Bold Letters</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-line-color-sel">Grid Line Color</label>
+                                <select id="ws-line-color-sel">
+                                    <option value="#9da49f" selected>Neutral Gray (#9da49f)</option>
+                                    <option value="#111815">Deep Black (#111815)</option>
+                                    <option value="#516d61">Forest Green (#516d61)</option>
+                                    <option value="#1a2c42">Navy Blue (#1a2c42)</option>
+                                    <option value="custom">Custom Hex...</option>
+                                </select>
+                                <input type="text" id="ws-custom-line-hex" placeholder="#9DA49F" style="display:none; margin-top:4px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-line-width-input">Line Thickness (mm) <span class="hint" id="ws-line-w-val">0.6mm</span></label>
+                                <input type="range" id="ws-line-width-input" min="0.0" max="2.5" step="0.1" value="0.6">
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-letter-font-sel">Letter Font</label>
+                                <select id="ws-letter-font-sel">
+                                    <option value="'Outfit', sans-serif" selected>Modern Sans (Outfit)</option>
+                                    <option value="'Plus Jakarta Sans', sans-serif">Clean Sans (Jakarta)</option>
+                                    <option value="Georgia, serif">Classic Book Serif</option>
+                                    <option value="'JetBrains Mono', monospace">Monospace (Code / Retro)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-letter-color-sel">Letter Color</label>
+                                <select id="ws-letter-color-sel">
+                                    <option value="#202a26" selected>Dark Charcoal (#202a26)</option>
+                                    <option value="#000000">Jet Black (#000000)</option>
+                                    <option value="#172721">Forest Ink (#172721)</option>
+                                    <option value="#1a2c42">Navy Blue (#1a2c42)</option>
+                                    <option value="custom">Custom Hex...</option>
+                                </select>
+                                <input type="text" id="ws-custom-letter-hex" placeholder="#202A26" style="display:none; margin-top:4px;">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ws-font-scale-slider">Letter Font Size (% of cell) <span class="hint" id="ws-font-scale-val">62%</span></label>
+                            <input type="range" id="ws-font-scale-slider" min="50" max="88" step="2" value="62">
                         </div>
                     </div>
                 </div>
@@ -390,78 +565,157 @@
 
                     <!-- Word Search Rules Subpanel -->
                     <div class="control-section" id="ws-rules-section" style="display:none;">
-                        <div class="section-label">🔍 Word Search Content & Grid</div>
+                        <div class="section-label">🔍 Step 1 · Language & Alphabet</div>
                         
-                        <div class="form-group">
-                            <label>Word Bank Theme Presets</label>
-                            <div class="preset-pills" id="ws-theme-presets">
-                                <button class="preset-pill-btn active" data-theme="animals">🦁 Safari Animals</button>
-                                <button class="preset-pill-btn" data-theme="space">🚀 Deep Space</button>
-                                <button class="preset-pill-btn" data-theme="nature">🌿 Wonders of Nature</button>
-                                <button class="preset-pill-btn" data-theme="custom">✍️ Custom List</button>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-lang-select">Puzzle Language</label>
+                                <select id="ws-lang-select">
+                                    <option value="English" selected>🇬🇧 English</option>
+                                    <option value="German (Deutsch)">🇩🇪 German (Deutsch)</option>
+                                    <option value="Spanish (Español)">🇪🇸 Spanish (Español)</option>
+                                    <option value="French (Français)">🇫🇷 French (Français)</option>
+                                    <option value="Italian (Italiano)">🇮🇹 Italian (Italiano)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-accent-mode-sel">Accents & Diacritics</label>
+                                <select id="ws-accent-mode-sel">
+                                    <option value="Standard Book Mode" selected>Standard Book Mode</option>
+                                    <option value="Preserve Exact Accents">Preserve Exact Accents</option>
+                                    <option value="Strip All Accents (A-Z)">Strip All Accents (A-Z)</option>
+                                </select>
                             </div>
                         </div>
 
+                        <div class="lang-badge" id="ws-lang-badge">
+                            🇬🇧 <b>English</b>: Standard Latin alphabet (A–Z).
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
+                            <button class="btn-tiny" id="ws-reset-sample-btn" title="Reset theme & sample word list to default for active language">🔄 Reset Language Sample</button>
+                        </div>
+
+                        <div class="section-label" style="margin-top:0.9rem;">📝 Step 2 · Words Input & Themes</div>
+                        
                         <div class="form-group">
+                            <label>Word Input Source</label>
+                            <div class="preset-pills" id="ws-source-pills">
+                                <button type="button" class="preset-pill-btn active" data-source="paste" id="ws-src-paste-btn">✍️ Paste / Type Words</button>
+                                <button type="button" class="preset-pill-btn" data-source="csv" id="ws-src-csv-btn">📂 Import CSV File</button>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="ws-theme-input">Theme / Puzzle Title</label>
+                                <input type="text" id="ws-theme-input" value="Animals">
+                            </div>
+                            <div class="form-group">
+                                <label for="ws-seed-input">Random Seed</label>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="number" id="ws-seed-input" value="42" style="flex:1;">
+                                    <button class="btn-tiny" id="ws-shuffle-seed-btn" title="Shuffle seed to rearrange letters" style="padding:0 12px;">🎲 Shuffle</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Drag and drop CSV area -->
+                        <div class="file-drop-area" id="ws-csv-dropzone" style="display:none;">
+                            <div class="file-drop-icon">📄</div>
+                            <div class="file-drop-text" id="ws-csv-file-label">Click or Drag & Drop CSV here</div>
+                            <div class="file-drop-sub">Supports 'theme,word' (multi-theme) or single-column 'word'</div>
+                            <input type="file" id="ws-csv-file-input" accept=".csv" style="display:none;">
+                        </div>
+
+                        <!-- Word list textarea -->
+                        <div class="form-group" id="ws-textarea-group">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <label for="ws-word-list-input">Word List (One per line or comma-separated)</label>
-                                <span class="hint" id="ws-word-count-badge">18 words</span>
+                                <label for="ws-word-list-input">Word List (One per line or semicolon-separated)</label>
+                                <span class="hint" id="ws-word-count-badge">12 words</span>
                             </div>
                             <textarea id="ws-word-list-input" rows="5" style="width:100%; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.6rem; font-family:var(--font-mono); font-size:0.82rem; background:var(--bg-main); color:var(--text-primary); resize:vertical;"></textarea>
                         </div>
 
+                        <!-- Input summary card -->
+                        <div class="summary-card" id="ws-summary-card">
+                            <span class="summary-title" id="ws-summary-text">1 theme · 12 valid words</span>
+                            <span class="summary-sub" id="ws-sample-tag">Built-in Sample</span>
+                        </div>
+
+                        <!-- Sample CSV downloads -->
+                        <div style="display:flex; gap:8px; margin-top:0.6rem;">
+                            <button type="button" class="btn-tiny" id="ws-down-themed-csv" style="flex:1;">📥 Themed CSV Sample</button>
+                            <button type="button" class="btn-tiny" id="ws-down-simple-csv" style="flex:1;">📥 Simple CSV Sample</button>
+                        </div>
+
+                        <!-- AI Prompts Expander -->
+                        <div class="expander-box" id="ws-ai-expander" style="margin-top:0.6rem;">
+                            <div class="expander-header" id="ws-ai-expander-hdr">
+                                <span>🤖 AI Prompts for ChatGPT / Claude</span>
+                                <span id="ws-ai-exp-icon">▼</span>
+                            </div>
+                            <div class="expander-content" id="ws-ai-expander-body">
+                                <div class="form-group">
+                                    <label for="ws-prompt-type-sel">Prompt Template</label>
+                                    <select id="ws-prompt-type-sel">
+                                        <option value="Themed CSV">Themed CSV (10 themes × 12 words)</option>
+                                        <option value="Simple CSV">Simple CSV (Single word column)</option>
+                                        <option value="Pasted word list">Pasted Word List</option>
+                                    </select>
+                                </div>
+                                <div class="code-box" id="ws-prompt-code-box"></div>
+                                <button type="button" class="btn-tiny" id="ws-copy-prompt-btn" style="align-self:flex-start;">📋 Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="section-label" style="margin-top:0.9rem;">📐 Step 3 · Grid Dimensions & Capacity</div>
+                        
                         <div class="form-row-2">
                             <div class="form-group">
                                 <label for="ws-grid-dim-select">Grid Dimensions</label>
                                 <select id="ws-grid-dim-select">
-                                    <option value="12">12 × 12 (Junior / Kids)</option>
-                                    <option value="14">14 × 14</option>
-                                    <option value="15" selected>15 × 15 (Standard Best Seller)</option>
-                                    <option value="16">16 × 16</option>
-                                    <option value="18">18 × 18 (Hard / Dense)</option>
-                                    <option value="20">20 × 20 (Giant)</option>
+                                    <option value="10x10">10 × 10 (Kids / Compact)</option>
+                                    <option value="12x10" selected>12 × 10 (Activity Book)</option>
+                                    <option value="12x12">12 × 12 (Junior)</option>
+                                    <option value="13x13">13 × 13 (Medium)</option>
+                                    <option value="14x14">14 × 14 (Standard KDP)</option>
+                                    <option value="15x15">15 × 15 (Classic Newspaper)</option>
+                                    <option value="16x16">16 × 16 (Challenging)</option>
+                                    <option value="auto">Auto (from Difficulty)</option>
+                                    <option value="custom">Custom (Rows × Cols)...</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="ws-difficulty-select">Placement Difficulty</label>
+                                <label for="ws-difficulty-select">Difficulty Tier</label>
                                 <select id="ws-difficulty-select">
-                                    <option value="easy">Easy (→ ↓ Only)</option>
-                                    <option value="medium" selected>Medium (→ ↓ ↘ ↗)</option>
-                                    <option value="hard">Hard (Adds Backward ← ↑)</option>
-                                    <option value="expert">Expert (All 8 Directions)</option>
+                                    <option value="easy">Easy (→ ↓ Forward Only)</option>
+                                    <option value="medium" selected>Medium (→ ↓ ↘ ↗ Forward & Diag)</option>
+                                    <option value="hard">Hard (All 8 Directions + Reverse)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="form-row-2">
+                        <div class="form-row-2" id="ws-custom-dims-row" style="display:none;">
                             <div class="form-group">
-                                <label for="ws-lang-select">Language Cleaning</label>
-                                <select id="ws-lang-select">
-                                    <option value="en" selected>English</option>
-                                    <option value="de">German (Ä/Ö/Ü → AE/OE/UE)</option>
-                                    <option value="es">Spanish (Preserves Ñ)</option>
-                                    <option value="fr">French</option>
-                                    <option value="it">Italian</option>
-                                </select>
+                                <label for="ws-cust-rows">Rows (Height) <span class="hint" id="ws-cust-rows-val">12</span></label>
+                                <input type="range" id="ws-cust-rows" min="6" max="25" step="1" value="12">
                             </div>
                             <div class="form-group">
-                                <label for="ws-word-cols-select">Word Bank Columns</label>
-                                <select id="ws-word-cols-select">
-                                    <option value="2">2 Columns</option>
-                                    <option value="3" selected>3 Columns (Balanced)</option>
-                                    <option value="4">4 Columns (Compact)</option>
-                                </select>
+                                <label for="ws-cust-cols">Columns (Width) <span class="hint" id="ws-cust-cols-val">10</span></label>
+                                <input type="range" id="ws-cust-cols" min="6" max="25" step="1" value="10">
                             </div>
                         </div>
 
-                        <div class="form-row-2">
-                            <div class="form-group">
-                                <label for="ws-seed-input">Random Seed</label>
-                                <input type="number" id="ws-seed-input" value="101">
-                            </div>
-                            <div class="form-group">
-                                <label for="ws-title-tpl">Title Template</label>
-                                <input type="text" id="ws-title-tpl" value="Word Search #{num}">
+                        <div class="form-group">
+                            <label for="ws-words-per-page-slider">Words Per Page <span class="hint" id="ws-words-per-page-val">12</span></label>
+                            <input type="range" id="ws-words-per-page-slider" min="4" max="30" step="1" value="12">
+                        </div>
+
+                        <div class="summary-card" id="ws-capacity-card" style="margin-top:0.4rem;">
+                            <div>
+                                <div class="summary-title" id="ws-capacity-dim-text">12 Rows × 10 Columns (120 cells)</div>
+                                <div class="summary-sub" id="ws-capacity-sub-text">Suggested capacity: ~9 words per page · Rectangular layout</div>
                             </div>
                         </div>
                     </div>

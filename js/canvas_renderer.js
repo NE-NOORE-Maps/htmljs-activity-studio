@@ -868,9 +868,68 @@ export const WORDSEARCH_HIGHLIGHT_COLORS = [
 /**
  * Render a single Word Search grid (or solution with highlighted words) at exact DPI.
  */
+/**
+ * Default Word Search Presets
+ */
+export const WS_PRESETS = {
+    adult_classic: {
+        cellStyle: "grid",
+        gridLineWidth: 0.6,
+        gridLineColor: "#9da49f",
+        fontScale: 62,
+        letterFont: "'Outfit', sans-serif",
+        letterColor: "#202a26",
+        solutionStyle: "capsule",
+        description: "Crisp traditional grid lines, balanced font proportion, neutral tones. Standard for adult puzzle books."
+    },
+    senior_large_print: {
+        cellStyle: "boxes",
+        gridLineWidth: 0.9,
+        gridLineColor: "#111815",
+        fontScale: 75,
+        letterFont: "'Plus Jakarta Sans', sans-serif",
+        letterColor: "#000000",
+        solutionStyle: "capsule",
+        description: "Bold high-contrast cell boxes and enlarged letters for seniors and large print editions."
+    },
+    kids_activity: {
+        cellStyle: "rounded_boxes",
+        gridLineWidth: 0.8,
+        gridLineColor: "#516d61",
+        fontScale: 68,
+        letterFont: "'Outfit', sans-serif",
+        letterColor: "#172721",
+        solutionStyle: "capsule",
+        description: "Playful rounded cell tiles, soft forest green borders, large punchy letters. Perfect for kids' activity books."
+    },
+    classroom_clean: {
+        cellStyle: "none",
+        gridLineWidth: 0.0,
+        gridLineColor: "#9da49f",
+        fontScale: 65,
+        letterFont: "'Outfit', sans-serif",
+        letterColor: "#000000",
+        solutionStyle: "box",
+        description: "Clean borderless design without grid lines. Floating letters for a modern, airy aesthetic."
+    },
+    custom: {
+        cellStyle: "grid",
+        gridLineWidth: 0.6,
+        gridLineColor: "#9da49f",
+        fontScale: 62,
+        letterFont: "'Outfit', sans-serif",
+        letterColor: "#202a26",
+        solutionStyle: "capsule",
+        description: "Full manual control over every slider, color, and line option."
+    }
+};
+
+/**
+ * Render a single Word Search grid (or solution with highlighted words) at exact DPI.
+ */
 export function renderWordSearchGridCanvas({
     puzzle,
-    style = SUDOKU_PRESETS.adult_classic,
+    style = WS_PRESETS.adult_classic,
     cellMm = 9.0,
     dpi = 300,
     solution = false,
@@ -878,8 +937,8 @@ export function renderWordSearchGridCanvas({
     dateText = null,
     showGridLines = true
 } = {}) {
-    const width = puzzle.width || 15;
-    const height = puzzle.height || 15;
+    const width = puzzle.width || (puzzle.grid && puzzle.grid[0] ? puzzle.grid[0].length : 15);
+    const height = puzzle.height || (puzzle.grid ? puzzle.grid.length : 15);
 
     const cellPx = Math.max(10, Math.round((cellMm / MM_TO_INCH) * dpi));
     const gridW = width * cellPx;
@@ -901,7 +960,7 @@ export function renderWordSearchGridCanvas({
     // 1. Header (if requested)
     if (includeHeader) {
         const titleFontPx = Math.max(10, Math.round(headerHPx * 0.42));
-        ctx.fillStyle = style.clueColor || "#111815";
+        ctx.fillStyle = style.letterColor || "#111815";
         ctx.font = `bold ${titleFontPx}px "Outfit", sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
@@ -919,60 +978,131 @@ export function renderWordSearchGridCanvas({
 
     const yOffset = headerHPx;
 
-    // 2. Optional Grid Lines
-    if (showGridLines) {
-        const lineW = Math.max(1, Math.round((0.3 / MM_TO_INCH) * dpi));
-        ctx.strokeStyle = "#E2E8F0";
+    // Line properties
+    const cellStyle = style.cellStyle || "grid";
+    const rawLw = style.gridLineWidth !== undefined ? style.gridLineWidth : 0.6;
+    const lineW = Math.max(1, Math.round((rawLw / MM_TO_INCH) * dpi));
+    const lineCol = style.gridLineColor || "#9da49f";
+    const solStyle = style.solutionStyle || "capsule";
+
+    // 2. Grid lines & borders according to cellStyle
+    if (showGridLines && rawLw > 0 && cellStyle !== "none") {
+        ctx.strokeStyle = lineCol;
         ctx.lineWidth = lineW;
 
-        for (let r = 0; r <= height; r++) {
-            ctx.beginPath();
-            ctx.moveTo(0, yOffset + r * cellPx);
-            ctx.lineTo(gridW, yOffset + r * cellPx);
-            ctx.stroke();
-        }
-        for (let c = 0; c <= width; c++) {
-            ctx.beginPath();
-            ctx.moveTo(c * cellPx, yOffset);
-            ctx.lineTo(c * cellPx, yOffset + gridH);
-            ctx.stroke();
+        if (cellStyle === "rounded_boxes") {
+            const rad = Math.round(cellPx * 0.20);
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    const bx = c * cellPx + 1;
+                    const by = yOffset + r * cellPx + 1;
+                    const bw = cellPx - 2;
+                    const bh = cellPx - 2;
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, bw, bh, rad);
+                    ctx.stroke();
+                }
+            }
+        } else if (cellStyle === "boxes") {
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    const bx = c * cellPx + 1;
+                    const by = yOffset + r * cellPx + 1;
+                    ctx.strokeRect(bx, by, cellPx - 2, cellPx - 2);
+                }
+            }
+        } else if (cellStyle === "grid") {
+            for (let r = 0; r <= height; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, yOffset + r * cellPx);
+                ctx.lineTo(gridW, yOffset + r * cellPx);
+                ctx.stroke();
+            }
+            for (let c = 0; c <= width; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * cellPx, yOffset);
+                ctx.lineTo(c * cellPx, yOffset + gridH);
+                ctx.stroke();
+            }
+        } else if (cellStyle === "outer_border") {
+            ctx.strokeRect(lineW / 2, yOffset + lineW / 2, gridW - lineW, gridH - lineW);
         }
     }
 
-    // Outer border
-    const outerW = Math.max(1, Math.round((1.0 / MM_TO_INCH) * dpi));
-    ctx.strokeStyle = style.gridColor || "#111815";
-    ctx.lineWidth = outerW;
-    ctx.strokeRect(outerW / 2, yOffset + outerW / 2, gridW - outerW, gridH - outerW);
+    // Outer border for grid style
+    if (cellStyle === "grid" && rawLw > 0) {
+        const outerW = Math.max(lineW, Math.round((0.9 / MM_TO_INCH) * dpi));
+        ctx.strokeStyle = lineCol;
+        ctx.lineWidth = outerW;
+        ctx.strokeRect(outerW / 2, yOffset + outerW / 2, gridW - outerW, gridH - outerW);
+    }
 
-    // 3. Solution Highlighting Layer (Under letters)
-    if (solution && puzzle.placements) {
-        puzzle.placements.forEach((placement, pIdx) => {
-            const color = WORDSEARCH_HIGHLIGHT_COLORS[pIdx % WORDSEARCH_HIGHLIGHT_COLORS.length];
-            const [r1, c1] = placement.start;
-            const [r2, c2] = placement.end;
-
-            const x1 = c1 * cellPx + cellPx / 2;
-            const y1 = yOffset + r1 * cellPx + cellPx / 2;
-            const x2 = c2 * cellPx + cellPx / 2;
-            const y2 = yOffset + r2 * cellPx + cellPx / 2;
-
-            ctx.save();
-            ctx.lineCap = "round";
-            ctx.lineWidth = Math.round(cellPx * 0.76);
-            ctx.strokeStyle = color;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-            ctx.restore();
+    // Collect solved cells
+    const solvedSet = new Set();
+    if (puzzle.placements) {
+        puzzle.placements.forEach(p => {
+            const [dr, dc] = p.direction;
+            const len = p.word.length;
+            const [sr, sc] = p.start;
+            for (let i = 0; i < len; i++) {
+                solvedSet.add(`${sr + i * dr},${sc + i * dc}`);
+            }
         });
     }
 
+    // 3. Solution Highlighting Layer (Under letters)
+    if (solution && puzzle.placements) {
+        if (solStyle === "capsule") {
+            puzzle.placements.forEach((placement, pIdx) => {
+                const color = WORDSEARCH_HIGHLIGHT_COLORS[pIdx % WORDSEARCH_HIGHLIGHT_COLORS.length];
+                const [r1, c1] = placement.start;
+                const [r2, c2] = placement.end;
+
+                const x1 = c1 * cellPx + cellPx / 2;
+                const y1 = yOffset + r1 * cellPx + cellPx / 2;
+                const x2 = c2 * cellPx + cellPx / 2;
+                const y2 = yOffset + r2 * cellPx + cellPx / 2;
+
+                ctx.save();
+                ctx.lineCap = "round";
+                ctx.lineWidth = Math.round(cellPx * 0.78);
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.restore();
+            });
+        } else if (solStyle === "box") {
+            puzzle.placements.forEach(placement => {
+                const [dr, dc] = placement.direction;
+                const len = placement.word.length;
+                const [sr, sc] = placement.start;
+
+                ctx.save();
+                ctx.lineWidth = Math.max(2, Math.round((0.8 / MM_TO_INCH) * dpi));
+                ctx.strokeStyle = "#2563EB";
+                const pad = Math.round(cellPx * 0.08);
+
+                for (let i = 0; i < len; i++) {
+                    const r = sr + i * dr;
+                    const c = sc + i * dc;
+                    const bx = c * cellPx + pad;
+                    const by = yOffset + r * cellPx + pad;
+                    const bw = cellPx - 2 * pad;
+                    const bh = cellPx - 2 * pad;
+                    ctx.strokeRect(bx, by, bw, bh);
+                }
+                ctx.restore();
+            });
+        }
+    }
+
     // 4. Letters Layer
-    const fontScale = (style.fontScale || 65) / 100.0;
+    const fontScale = (style.fontScale || 62) / 100.0;
     const fontPx = Math.max(8, Math.round(cellPx * fontScale));
-    const fontFam = style.clueFont || "Outfit";
+    const fontFam = style.letterFont || "'Outfit', sans-serif";
+    const letterCol = style.letterColor || "#202a26";
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -984,9 +1114,16 @@ export function renderWordSearchGridCanvas({
 
             const cx = c * cellPx + cellPx / 2;
             const cy = yOffset + r * cellPx + cellPx / 2;
+            const isSolved = solvedSet.has(`${r},${c}`);
 
-            ctx.fillStyle = style.clueColor || "#111815";
-            ctx.font = `bold ${fontPx}px "${fontFam}", sans-serif`;
+            if (solution && solStyle === "bold" && isSolved) {
+                ctx.fillStyle = "#1E3A8A";
+                ctx.font = `800 ${fontPx + 1}px ${fontFam}`;
+            } else {
+                ctx.fillStyle = letterCol;
+                ctx.font = `bold ${fontPx}px ${fontFam}`;
+            }
+
             ctx.fillText(letter, cx, cy);
         }
     }
@@ -999,13 +1136,15 @@ export function renderWordSearchGridCanvas({
  */
 export function renderWordSearchBookPageCanvas({
     puzzle,
-    style = SUDOKU_PRESETS.adult_classic,
+    style = WS_PRESETS.adult_classic,
     pageNum = 1,
     totalPages = 1,
     dpi = 150,
     dateText = null,
     calendarCanvas = null,
-    wordColumns = 3
+    wordColumns = 3,
+    showWordBank = true,
+    wordBankTitle = null
 } = {}) {
     const w = Math.round(8.5 * dpi);
     const h = Math.round(11.0 * dpi);
@@ -1069,7 +1208,7 @@ export function renderWordSearchBookPageCanvas({
     ctx.stroke();
 
     // 2. Word Search Grid
-    const availableGridH = Math.round(h * 0.52);
+    const availableGridH = showWordBank ? Math.round(h * 0.52) : Math.round(h * 0.75);
     const availableGridW = w - 120;
     const gridMaxDim = Math.min(availableGridW, availableGridH);
 
@@ -1088,43 +1227,53 @@ export function renderWordSearchBookPageCanvas({
     const gridY = headerHeight + 25;
     ctx.drawImage(gridCnv, gridX, gridY);
 
-    // 3. Word Bank Section
-    const words = [...(puzzle.placedWords || [])].sort((a, b) => a.localeCompare(b));
-    const bankY = gridY + gridCnv.height + 25;
+    // 3. Word Bank Section (if enabled)
+    if (showWordBank) {
+        const words = [...(puzzle.placedWords || puzzle.words || [])].sort((a, b) => a.localeCompare(b));
+        const bankY = gridY + gridCnv.height + 25;
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#1E293B";
-    ctx.font = `bold ${fontSubPx}px "Outfit", sans-serif`;
-    ctx.fillText(`WORDS TO FIND (${words.length})`, w / 2, bankY);
+        const defaultBankTitle = (puzzle.language && puzzle.language.includes("German")) ? "Wortliste"
+            : (puzzle.language && puzzle.language.includes("Spanish")) ? "Lista de palabras"
+            : (puzzle.language && puzzle.language.includes("French")) ? "Liste de mots"
+            : (puzzle.language && puzzle.language.includes("Italian")) ? "Elenco parole"
+            : "WORDS TO FIND";
 
-    // Word Bank Columns
-    const cols = Math.max(2, Math.min(4, wordColumns));
-    const bankMarginX = 70;
-    const colW = (w - 2 * bankMarginX) / cols;
-    const wordsPerCol = Math.ceil(words.length / cols);
-    const lineH = Math.max(14, Math.round(fontWordPx * 1.55));
+        const titleText = wordBankTitle || `${defaultBankTitle} (${words.length})`;
 
-    for (let c = 0; c < cols; c++) {
-        const colWords = words.slice(c * wordsPerCol, (c + 1) * wordsPerCol);
-        const colStartX = bankMarginX + c * colW + 15;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#1E293B";
+        ctx.font = `bold ${fontSubPx}px "Outfit", sans-serif`;
+        ctx.fillText(titleText, w / 2, bankY);
 
-        colWords.forEach((word, rIdx) => {
-            const wy = bankY + 24 + rIdx * lineH;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
+        // Word Bank Columns
+        const cols = Math.max(1, Math.min(5, wordColumns));
+        const bankMarginX = 65;
+        const colW = (w - 2 * bankMarginX) / cols;
+        const wordsPerCol = Math.ceil(words.length / cols);
+        const lineH = Math.max(14, Math.round(fontWordPx * 1.55));
 
-            // Checkbox icon
-            ctx.strokeStyle = "#94A3B8";
-            ctx.lineWidth = 1;
-            const boxSize = Math.round(fontWordPx * 0.72);
-            ctx.strokeRect(colStartX, wy - boxSize / 2, boxSize, boxSize);
+        for (let c = 0; c < cols; c++) {
+            const colWords = words.slice(c * wordsPerCol, (c + 1) * wordsPerCol);
+            const colStartX = bankMarginX + c * colW + 15;
 
-            // Word text
-            ctx.fillStyle = "#334155";
-            ctx.font = `600 ${fontWordPx}px "Plus Jakarta Sans", sans-serif`;
-            ctx.fillText(word, colStartX + boxSize + 8, wy);
-        });
+            colWords.forEach((word, rIdx) => {
+                const wy = bankY + 24 + rIdx * lineH;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "middle";
+
+                // Checkbox icon
+                ctx.strokeStyle = "#94A3B8";
+                ctx.lineWidth = 1.2;
+                const boxSize = Math.round(fontWordPx * 0.72);
+                ctx.strokeRect(colStartX, wy - boxSize / 2, boxSize, boxSize);
+
+                // Word text
+                ctx.fillStyle = style.letterColor || "#334155";
+                ctx.font = `600 ${fontWordPx}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillText(word, colStartX + boxSize + 8, wy);
+            });
+        }
     }
 
     // 4. Page Footer
@@ -1136,6 +1285,7 @@ export function renderWordSearchBookPageCanvas({
 
     return canvas;
 }
+
 
 /**
  * Render a composite Word Search solution page with multiple solved puzzle answer keys.
