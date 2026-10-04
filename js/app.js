@@ -124,7 +124,7 @@ const state = {
     wsCols: 10,
     wsWordsPerPage: 12,
     wsDifficulty: "medium",
-    wsTitleTemplate: "Word Search #{num}",
+    wsTitleTemplate: "{title}",
 
     // Generated preview slice & build cache
     puzzles: [],
@@ -552,6 +552,20 @@ function getWordsForWsPuzzle(item, puzzleIndex, targetWordCount) {
     return selected;
 }
 
+// Determine title for a Word Search puzzle page:
+// If it's a themed word search, the title of the page is the title of the theme.
+function getWsPuzzleTitle(item, pNum) {
+    const rawTheme = (item && item.theme) ? String(item.theme).trim() : "";
+    const isThemed = rawTheme.length > 0 && rawTheme.toLowerCase() !== "word search" && rawTheme.toLowerCase() !== "my theme";
+    if (isThemed) {
+        return rawTheme;
+    }
+    if (state.wsTitleTemplate && state.wsTitleTemplate.includes("{num}")) {
+        return state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", rawTheme || "Word Search");
+    }
+    return rawTheme || `Word Search #${pNum}`;
+}
+
 // Determine total puzzle count needed for Word Search
 function getWsTotalNeeded(baseChunks) {
     if (!baseChunks || baseChunks.length === 0) return 1;
@@ -675,16 +689,7 @@ function updatePuzzlesBatch() {
             const globalIdx = startIdx + i;
             const pNum = (state.wsStartNumber || 1) + globalIdx;
             const item = baseChunks[globalIdx % baseChunks.length];
-            const themeTitle = (state.totalPuzzlesCount > baseChunks.length && baseChunks.length > 1)
-                ? `${item.theme} #${Math.floor(globalIdx / baseChunks.length) + 1}`
-                : (baseChunks.length === 1 && state.totalPuzzlesCount > 1
-                    ? `${item.theme} #${pNum}`
-                    : item.theme);
-
-            const pTitle = state.wsTitleTemplate
-                ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
-                : themeTitle;
-
+            const pTitle = getWsPuzzleTitle(item, pNum);
             const puzzleWords = getWordsForWsPuzzle(item, globalIdx, state.wsWordsPerPage || 12);
 
             const puzzle = generateWordSearchPuzzle({
@@ -699,7 +704,8 @@ function updatePuzzlesBatch() {
             });
 
             puzzle.puzzleId = pNum;
-            puzzle.theme = item.theme;
+            puzzle.theme = pTitle;
+            puzzle.title = pTitle;
             puzzle.difficultyLabel = state.wsDifficulty.toUpperCase();
             generated.push(puzzle);
         }
@@ -1978,16 +1984,7 @@ async function getOrBuildFullPuzzlesBatch(onProgress) {
         for (let i = 0; i < totalNeeded; i++) {
             const pNum = (state.wsStartNumber || 1) + i;
             const item = baseChunks[i % baseChunks.length];
-            const themeTitle = (totalNeeded > baseChunks.length && baseChunks.length > 1)
-                ? `${item.theme} #${Math.floor(i / baseChunks.length) + 1}`
-                : (baseChunks.length === 1 && totalNeeded > 1
-                    ? `${item.theme} #${pNum}`
-                    : item.theme);
-
-            const pTitle = state.wsTitleTemplate
-                ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
-                : themeTitle;
-
+            const pTitle = getWsPuzzleTitle(item, pNum);
             const puzzleWords = getWordsForWsPuzzle(item, i, state.wsWordsPerPage || 12);
 
             const puzzle = generateWordSearchPuzzle({
@@ -2002,7 +1999,8 @@ async function getOrBuildFullPuzzlesBatch(onProgress) {
             });
 
             puzzle.puzzleId = pNum;
-            puzzle.theme = item.theme;
+            puzzle.theme = pTitle;
+            puzzle.title = pTitle;
             puzzle.difficultyLabel = state.wsDifficulty.toUpperCase();
             allPuzzles.push(puzzle);
 
