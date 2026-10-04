@@ -491,34 +491,77 @@ function getWsBaseChunks() {
     const wpp = state.wsWordsPerPage || 12;
     for (const [theme, words] of Object.entries(groups)) {
         const cleaned = words.filter(w => w.length >= 3);
-        for (let start = 0; start < cleaned.length; start += wpp) {
-            const chunk = cleaned.slice(start, start + wpp);
-            if (chunk.length > 0) {
-                baseChunks.push({ theme, words: chunk });
+        if (cleaned.length === 0) continue;
+
+        if (cleaned.length <= wpp) {
+            baseChunks.push({ theme, words: cleaned, allWords: cleaned, chunkIndex: 0 });
+        } else {
+            const numFullChunks = Math.floor(cleaned.length / wpp);
+            const rem = cleaned.length % wpp;
+            // Only create an additional chunk if the remainder has at least 4 words
+            // AND is at least half of wpp (otherwise a 1-3 word page is unusable)
+            const minAllowedRemainder = Math.min(4, Math.ceil(wpp * 0.5));
+            const hasExtraChunk = rem >= minAllowedRemainder && rem >= 4;
+
+            for (let i = 0; i < numFullChunks; i++) {
+                baseChunks.push({
+                    theme,
+                    words: cleaned.slice(i * wpp, (i + 1) * wpp),
+                    allWords: cleaned,
+                    chunkIndex: i
+                });
+            }
+
+            if (hasExtraChunk) {
+                baseChunks.push({
+                    theme,
+                    words: cleaned.slice(numFullChunks * wpp),
+                    allWords: cleaned,
+                    chunkIndex: numFullChunks
+                });
             }
         }
     }
 
     if (baseChunks.length === 0) {
+        const sample = ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"];
         baseChunks.push({
             theme: state.wsThemeInput || "Animals",
-            words: ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"]
+            words: sample,
+            allWords: sample,
+            chunkIndex: 0
         });
     }
     return baseChunks;
 }
 
+// Select words for a specific Word Search puzzle instance, rotating words across puzzles
+// so words beyond words_per_page are utilized rather than dropped.
+function getWordsForWsPuzzle(item, puzzleIndex, targetWordCount) {
+    const allWords = item.allWords || item.words || [];
+    const baseWords = item.words || [];
+    if (!allWords || allWords.length <= targetWordCount) {
+        return baseWords;
+    }
+    const step = Math.max(1, allWords.length - targetWordCount);
+    const startOffset = (puzzleIndex * step) % allWords.length;
+    const selected = [];
+    for (let k = 0; k < targetWordCount; k++) {
+        selected.push(allWords[(startOffset + k) % allWords.length]);
+    }
+    return selected;
+}
+
 // Determine total puzzle count needed for Word Search
 function getWsTotalNeeded(baseChunks) {
-    let totalNeeded = baseChunks.length;
+    if (!baseChunks || baseChunks.length === 0) return 1;
     if (state.wsTargetCountEnforced) {
-        totalNeeded = state.wsPuzzleCount || 12;
-    } else if (state.wsSource === "paste" && state.wsPuzzleCount) {
-        if (baseChunks.length === 1 && state.wsPuzzleCount > 1) {
-            totalNeeded = state.wsPuzzleCount;
-        }
+        return Math.max(1, state.wsPuzzleCount || 12);
     }
-    return Math.max(1, totalNeeded);
+    if (state.wsPuzzleCount && state.wsPuzzleCount > baseChunks.length) {
+        return state.wsPuzzleCount;
+    }
+    return Math.max(1, baseChunks.length);
 }
 
 // Determine grid dimensions & fill alphabet for Word Search
@@ -642,8 +685,10 @@ function updatePuzzlesBatch() {
                 ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
                 : themeTitle;
 
+            const puzzleWords = getWordsForWsPuzzle(item, globalIdx, state.wsWordsPerPage || 12);
+
             const puzzle = generateWordSearchPuzzle({
-                words: item.words,
+                words: puzzleWords,
                 width: cols,
                 height: rows,
                 difficulty: state.wsDifficulty,
@@ -1943,8 +1988,10 @@ async function getOrBuildFullPuzzlesBatch(onProgress) {
                 ? state.wsTitleTemplate.replace("{num}", String(pNum)).replace("{title}", themeTitle)
                 : themeTitle;
 
+            const puzzleWords = getWordsForWsPuzzle(item, i, state.wsWordsPerPage || 12);
+
             const puzzle = generateWordSearchPuzzle({
-                words: item.words,
+                words: puzzleWords,
                 width: cols,
                 height: rows,
                 difficulty: state.wsDifficulty,
