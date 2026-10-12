@@ -1,0 +1,16 @@
+# Publish only the browser application from this repository root.
+node_modules/
+.git/
+.github/
+.wrangler/
+tests/
+
+.assetsignore
+.gitignore
+wrangler.jsonc
+package.json
+package-lock.json
+bun.lock
+bun.lockb
+README.md
+PUBLIC_RELEASE.md
