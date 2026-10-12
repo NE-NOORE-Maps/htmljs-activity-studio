@@ -143,7 +143,7 @@
 <option value="hard">Hard (★★★★☆)</option>
 <option value="expert">Expert (★★★★★)</option>
 </select>
-</div></div><div class="settings-column settings-secondary"><details class="advanced"><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
+</div></div><div class="settings-column settings-secondary"><details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
 <label for="sdk-seed-input">Random Seed</label>
 <input id="sdk-seed-input" required="" type="number" value="42"/>
 </div><div class="form-group">
@@ -191,7 +191,7 @@
 </div><div class="lang-badge" id="ws-lang-badge">
                             🇬🇧 <b>English</b>: Standard Latin alphabet (A–Z).
                         </div><div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
-</div><div class="section-label" style="margin-top:0.9rem;">Words &amp; themes</div><div class="form-group">
+</div><div class="section-label" style="margin-top:0.9rem;">Words import &amp; list</div><div class="form-group">
 <label>Word Input Source</label>
 <div class="preset-pills" id="ws-source-pills">
 <button class="preset-pill-btn active" data-source="paste" id="ws-src-paste-btn" type="button">Paste words</button>
@@ -216,8 +216,24 @@
 </div><div class="summary-card" id="ws-summary-card">
 <span class="summary-title" id="ws-summary-text">1 theme · 12 valid words</span>
 <span class="summary-sub" id="ws-sample-tag">Built-in Sample</span>
-</div><div style="display:flex; gap:8px; margin-top:0.6rem;">
-</div></div><div class="settings-column settings-secondary"><div class="section-label" style="margin-top:0.9rem;">Difficulty &amp; grid</div><div class="form-row-2">
+</div><details class="advanced" style="margin-top:0.6rem;"><summary>Sample files &amp; writing prompts</summary><div class="details-body"><div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="btn-tiny" id="ws-reset-sample-btn" title="Reset theme &amp; sample word list to default for active language">Restore sample words</button><button class="btn-tiny" id="ws-down-themed-csv" style="flex:1;" type="button">📥 Themed CSV Sample</button><button class="btn-tiny" id="ws-down-simple-csv" style="flex:1;" type="button">📥 Simple CSV Sample</button></div><div class="expander-box" id="ws-ai-expander" style="margin-top:0.6rem;">
+<button aria-expanded="false" class="expander-header" id="ws-ai-expander-hdr" type="button">
+<span>🤖 AI Prompts for ChatGPT / Claude</span>
+<span id="ws-ai-exp-icon">▼</span>
+</button>
+<div class="expander-content" id="ws-ai-expander-body">
+<div class="form-group">
+<label for="ws-prompt-type-sel">Prompt Template</label>
+<select id="ws-prompt-type-sel">
+<option value="Themed CSV">Themed CSV (10 themes × 12 words)</option>
+<option value="Simple CSV">Simple CSV (Single word column)</option>
+<option value="Pasted word list">Pasted Word List</option>
+</select>
+</div>
+<div class="code-box" id="ws-prompt-code-box"></div>
+<button class="btn-tiny" id="ws-copy-prompt-btn" style="align-self:flex-start;" type="button">📋 Copy Prompt</button>
+</div>
+</div></div></details></div><div class="settings-column settings-secondary"><div class="section-label" style="margin-top:0.9rem;">Words &amp; grid settings</div><div class="form-row-2">
 <div class="form-group">
 <label for="ws-grid-dim-select">Grid Dimensions</label>
 <select id="ws-grid-dim-select">
@@ -257,7 +273,7 @@
 <div class="summary-title" id="ws-capacity-dim-text">12 Rows × 10 Columns (120 cells)</div>
 <div class="summary-sub" id="ws-capacity-sub-text">Suggested capacity: ~9 words per page · Rectangular layout</div>
 </div>
-</div><details class="advanced"><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
+</div><details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
 <label for="ws-seed-input">Random Seed</label>
 <div style="display:flex; gap:6px;">
 <input id="ws-seed-input" required="" style="flex:1;" type="number" value="42"/>
@@ -270,23 +286,6 @@
 <option value="Preserve Exact Accents">Preserve Exact Accents</option>
 <option value="Strip All Accents (A-Z)">Strip All Accents (A-Z)</option>
 </select>
-</div></div></details><details class="advanced"><summary>Sample files &amp; writing prompts</summary><div class="details-body"><button class="btn-tiny" id="ws-reset-sample-btn" title="Reset theme &amp; sample word list to default for active language">Restore sample words</button><button class="btn-tiny" id="ws-down-themed-csv" style="flex:1;" type="button">📥 Themed CSV Sample</button><button class="btn-tiny" id="ws-down-simple-csv" style="flex:1;" type="button">📥 Simple CSV Sample</button><div class="expander-box" id="ws-ai-expander" style="margin-top:0.6rem;">
-<button aria-expanded="false" class="expander-header" id="ws-ai-expander-hdr" type="button">
-<span>🤖 AI Prompts for ChatGPT / Claude</span>
-<span id="ws-ai-exp-icon">▼</span>
-</button>
-<div class="expander-content" id="ws-ai-expander-body">
-<div class="form-group">
-<label for="ws-prompt-type-sel">Prompt Template</label>
-<select id="ws-prompt-type-sel">
-<option value="Themed CSV">Themed CSV (10 themes × 12 words)</option>
-<option value="Simple CSV">Simple CSV (Single word column)</option>
-<option value="Pasted word list">Pasted Word List</option>
-</select>
-</div>
-<div class="code-box" id="ws-prompt-code-box"></div>
-<button class="btn-tiny" id="ws-copy-prompt-btn" style="align-self:flex-start;" type="button">📋 Copy Prompt</button>
-</div>
 </div></div></details></div></div>
 </div><div class="tab-panel" id="tab-styling"><div class="step-heading"><h2>Design the reading experience</h2><p>Balance readable puzzles with a comfortable page layout.</p></div>
 <div class="control-section" id="sdk-styling-section">
@@ -307,7 +306,7 @@
 <input aria-label="Include Rules / Instructions" checked="" id="sdk-instructions-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
-</div><div class="section-label" style="margin-top:1.25rem;">Answer key layout &amp; style</div><div class="form-group">
+</div><div class="section-label" style="margin-top:1.25rem;">Solution settings &amp; layout</div><div class="form-group">
 <label for="sdk-sol-per-page">Answers per page</label>
 <select id="sdk-sol-per-page">
 <option value="1">1 solution / page</option>
@@ -377,7 +376,7 @@
 <input aria-label="Display Word Bank" checked="" id="ws-show-bank-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
-</div><div class="section-label" style="margin-top:1.25rem;">Answer key layout &amp; style</div><div class="form-group">
+</div><div class="section-label" style="margin-top:1.25rem;">Solution settings &amp; layout</div><div class="form-group">
 <label for="ws-sol-per-page">Answers per page</label>
 <select id="ws-sol-per-page">
 <option value="1">1 solution / page (Giant Print)</option>
@@ -621,7 +620,7 @@
 </div><div class="field-help" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">📄 Answer density: <strong id="ws-review-answers-badge">4 answers / page</strong> (set in Page design).</div></div></div><div class="export-panel">
 <div class="export-header">
 <div>
-<div class="export-title">Download your interior</div>
+<div class="export-title">Export &amp; download interior</div>
 <div class="export-spec" id="export-summary-text">50 Puzzles · 8.5 x 11" Letter · 300 DPI Interior preview</div>
 </div>
 </div>

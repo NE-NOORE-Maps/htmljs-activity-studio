@@ -59,3 +59,12 @@ test('index.html tab panels match workflow.js step sequence order', () => {
     assert.deepEqual(panelMatches, ['tab-volume', 'tab-rules', 'tab-styling', 'tab-review']);
 });
 
+test('Advanced puzzle settings details elements are open by default', () => {
+    const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const advancedMatches = [...indexHtml.matchAll(/<details\s+class="advanced"([^>]*)>\s*<summary>Advanced puzzle settings<\/summary>/g)];
+    assert.equal(advancedMatches.length, 2, 'Expected 2 Advanced puzzle settings details elements');
+    for (const match of advancedMatches) {
+        assert.ok(match[1].includes('open'), 'Expected details element to have open attribute');
+    }
+});
+
