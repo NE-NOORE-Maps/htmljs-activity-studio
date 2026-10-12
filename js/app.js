@@ -46,6 +46,7 @@ import {
 import {
     buildCanvaSudokuExcel,
     buildCanvaWordSearchExcel,
+    buildPerGridSolutionWorkbooks,
     buildSolutionPageWorkbooks,
     generateCanvaInstructions
 } from "./excel_exporter.js?v=pro8";
