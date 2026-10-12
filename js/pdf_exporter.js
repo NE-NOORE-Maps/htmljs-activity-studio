@@ -1,7 +1,7 @@
 import {renderSudokuBookPageCanvas, renderSudokuSolutionPageCanvas,
-    renderWordSearchBookPageCanvas, renderWordSearchSolutionPageCanvas} from './canvas_renderer.js?v=pro8';
-import {TRIM_DIMENSIONS_PT, bookPageCounts, paperbackPageLimit, createBookPage, pageText} from './book_layout.js?v=pro8';
-export {TRIM_DIMENSIONS_PT} from './book_layout.js?v=pro8';
+    renderWordSearchBookPageCanvas, renderWordSearchSolutionPageCanvas} from './canvas_renderer.js?v=pro9';
+import {TRIM_DIMENSIONS_PT, bookPageCounts, paperbackPageLimit, createBookPage, pageText} from './book_layout.js?v=pro9';
+export {TRIM_DIMENSIONS_PT} from './book_layout.js?v=pro9';
 
 // The same physical layout powers previews and exports. PDF pages are rasterized at 300 DPI.
 async function buildBook(options, wordsearch) {

@@ -1,4 +1,4 @@
-import {createBookPage, pageText, fitImage, pageFooter} from "./book_layout.js?v=pro8";
+import {createBookPage, pageText, fitImage, pageFooter} from "./book_layout.js?v=pro9";
 /**
  * High-Resolution 300 DPI Canvas Raster Renderer for KDP Print & Live Previews.
  * Renders Sudoku grids, word searches, multi-game book interior pages, and composite solutions.

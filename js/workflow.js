@@ -1,4 +1,4 @@
-import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro8';
+import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro9';
 
 const steps = ['tab-volume','tab-rules','tab-styling','tab-review'];
 const names = ['Book setup','Puzzle content','Page design','Review & export'];
