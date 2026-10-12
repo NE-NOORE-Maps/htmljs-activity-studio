@@ -1,4 +1,4 @@
-import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro10';
+import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro11';
 
 const steps = ['tab-volume','tab-rules','tab-styling','tab-review'];
 const names = ['Words import','Words settings','Solution settings','Export'];

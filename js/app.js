@@ -1,4 +1,4 @@
-import {setupWorkflow, syncWorkflowMode, updateWorkflow, activeBook} from "./workflow.js?v=pro10";
+import {setupWorkflow, syncWorkflowMode, updateWorkflow, activeBook} from "./workflow.js?v=pro11";
 /**
  * KDP Activity Studio · Main Application Controller
  * Handles reactive UI state, real-time preview rendering, and production exports
@@ -13,14 +13,14 @@ import {
     TYPE_CONFIGS,
     generateSudokuPuzzle,
     generateSudokuBatch
-} from "./sudoku_engine.js?v=pro10";
+} from "./sudoku_engine.js?v=pro11";
 
 import {
     DATE_FORMAT_PRESETS,
     CALENDAR_THEMES,
     getPuzzleDateInfo,
     renderMiniMonthCalendarCanvas
-} from "./calendar_builder.js?v=pro10";
+} from "./calendar_builder.js?v=pro11";
 
 import {
     generateWordSearchPuzzle,
@@ -29,7 +29,7 @@ import {
     maxWordsForGrid,
     parseWordSearchText,
     parseWordSearchCsv
-} from "./wordsearch_engine.js?v=pro10";
+} from "./wordsearch_engine.js?v=pro11";
 
 import {
     SUDOKU_PRESETS,
@@ -41,7 +41,7 @@ import {
     renderWordSearchGridCanvas,
     renderWordSearchBookPageCanvas,
     renderWordSearchSolutionPageCanvas
-} from "./canvas_renderer.js?v=pro10";
+} from "./canvas_renderer.js?v=pro11";
 
 import {
     buildCanvaSudokuExcel,
@@ -49,13 +49,13 @@ import {
     buildPerGridSolutionWorkbooks,
     buildSolutionPageWorkbooks,
     generateCanvaInstructions
-} from "./excel_exporter.js?v=pro10";
+} from "./excel_exporter.js?v=pro11";
 
 import {
     buildSudokuKdpPdf,
     buildWordSearchKdpPdf
-} from "./pdf_exporter.js?v=pro10";
-import {TRIM_DIMENSIONS_PT} from "./book_layout.js?v=pro10";
+} from "./pdf_exporter.js?v=pro11";
+import {TRIM_DIMENSIONS_PT} from "./book_layout.js?v=pro11";
 
 // Global Studio State
 const state = {
