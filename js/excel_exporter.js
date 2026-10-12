@@ -8,6 +8,99 @@
  * seamlessly bypass Canva's 100-page bulk create design limit.
  */
 
+
+// One image represents the finished answer page, matching the older app's
+// embedded-picture export while preserving multi-solution page composition.
+export async function buildSolutionPageWorkbooks({
+    puzzles = [], solutionPageImages = [], solutionsPerPage = 4,
+    batchSize = 100, mode = 'wordsearch', pageAspect = 11 / 8.5
+} = {}) {
+    if (!window.ExcelJS?.Workbook) throw new Error('Image embedding library unavailable. Reload and retry.');
+    if (!Number.isInteger(solutionsPerPage) || solutionsPerPage < 1 || solutionsPerPage > 9)
+        throw new Error('Choose between 1 and 9 answers per page.');
+    const totalPages = Math.ceil(puzzles.length / solutionsPerPage);
+    if (!totalPages || solutionPageImages.length !== totalPages || solutionPageImages.some(image => !image))
+        throw new Error('A rendered answer page is missing. Retry the export.');
+    const size = batchSize > 0 ? Math.floor(batchSize) : totalPages;
+    const files = [];
+    for (let start = 0; start < totalPages; start += size) {
+        const end = Math.min(start + size, totalPages);
+        const wb = new window.ExcelJS.Workbook();
+        const sheet = wb.addWorksheet('Solution Pages');
+        sheet.columns = [
+            {header:'page_number',key:'page_number',width:16},
+            {header:'puzzle_numbers',key:'puzzle_numbers',width:26},
+            {header:'solution_count',key:'solution_count',width:18},
+            {header:'solution_page_image',key:'solution_page_image',width:34}
+        ];
+        sheet.getRow(1).font = {bold:true};
+        sheet.views = [{state:'frozen',ySplit:1}];
+        for (let page = start; page < end; page++) {
+            const first = page * solutionsPerPage;
+            const numbers = puzzles.slice(first, first + solutionsPerPage).map((_,i)=>first+i+1);
+            const row = sheet.addRow({page_number:page+1,puzzle_numbers:numbers.join(', '),solution_count:numbers.length});
+            row.height = 180;
+            const image = wb.addImage({base64:cleanBase64(solutionPageImages[page]),extension:'png'});
+            sheet.addImage(image,{tl:{col:3.08,row:page-start+1.05},
+                ext:{width:140,height:Math.min(220,140*pageAspect)},editAs:'oneCell'});
+        }
+        files.push({filename:`${mode}_solution_pages_${start+1}-${end}.xlsx`,
+            buffer:await wb.xlsx.writeBuffer(),pageStart:start+1,pageEnd:end,rowCount:end-start});
+    }
+    return {files,isSplit:files.length>1,totalBatches:files.length,totalPages};
+}
+
+// A row represents one answer page; each slot contains its own embedded PNG.
+async function appendSeparateSolutions(result, options, mode) {
+    if (options.includeSolutionInSameExcel !== false) return result;
+    if (options.solutionPageImages?.length) {
+        const pages = await buildSolutionPageWorkbooks({...options,mode});
+        result.files.push(...pages.files);
+        result.isSplit = result.files.length > 1;
+        return result;
+    }
+    const { puzzles = [], solutionImages = [], solutionsPerPage = 4, batchSize = 100 } = options;
+    if (!Number.isInteger(solutionsPerPage) || solutionsPerPage < 1 || solutionsPerPage > 9)
+        throw new Error("Choose between 1 and 9 answers per page.");
+    if (solutionImages.length !== puzzles.length || solutionImages.some(image => !image))
+        throw new Error("Solution images are missing. Retry the export to embed every answer.");
+    const totalPages = Math.ceil(puzzles.length / solutionsPerPage);
+    const size = batchSize > 0 ? batchSize : totalPages;
+    for (let start = 0; start < totalPages; start += size) {
+        const end = Math.min(start + size, totalPages);
+        const wb = new window.ExcelJS.Workbook();
+        const ws = wb.addWorksheet("Solution Pages");
+        ws.columns = [{header:"page_number",key:"page_number",width:16},
+            ...Array.from({length:solutionsPerPage}, (_,i) => [
+                {header:`solution_${i+1}_number`,key:`solution_${i+1}_number`,width:18},
+                {header:`solution_${i+1}_title`,key:`solution_${i+1}_title`,width:26},
+                {header:`solution_${i+1}_image`,key:`solution_${i+1}_image`,width:26}
+            ]).flat()];
+        ws.getRow(1).font = {bold:true};
+        ws.views = [{state:"frozen",ySplit:1}];
+        for (let page = start; page < end; page++) {
+            const data = {page_number:page+1};
+            for (let slot=0; slot<solutionsPerPage; slot++) {
+                const index=page*solutionsPerPage+slot;
+                if (index>=puzzles.length) break;
+                data[`solution_${slot+1}_number`]=index+1;
+                data[`solution_${slot+1}_title`]=puzzles[index].title || `Puzzle ${index+1}`;
+            }
+            ws.addRow(data).height=150;
+            for (let slot=0; slot<solutionsPerPage; slot++) {
+                const index=page*solutionsPerPage+slot;
+                if (index>=puzzles.length) break;
+                const image=wb.addImage({base64:cleanBase64(solutionImages[index]),extension:"png"});
+                ws.addImage(image,{tl:{col:3+slot*3+0.08,row:page-start+1.05},ext:{width:140,height:140},editAs:"oneCell"});
+            }
+        }
+        result.files.push({filename:`${mode}_solutions_pages_${start+1}-${end}.xlsx`,
+            buffer:await wb.xlsx.writeBuffer(),pageStart:start+1,pageEnd:end,rowCount:end-start});
+    }
+    result.isSplit=result.files.length>1;
+    return result;
+}
+
 function cleanBase64(dataUrl) {
     if (!dataUrl) return "";
     return dataUrl.replace(/^data:image\/[a-z]+;base64,/, "");
@@ -31,7 +124,17 @@ CANVA BULK CREATE - BATCH IMPORT GUIDE
 ${modeName} Activity Book (${totalPages} Total Pages)
 ===================================================================
 
-WHY ARE THERE MULTIPLE FILES IN THIS ZIP?
+SEPARATE SOLUTION WORKBOOKS
+When separate solutions are selected, *_solutions_pages_*.xlsx files
+contain the answer pages. Import these separately from puzzle workbooks.
+Each row is one complete answer page. Connect solution_page_image to
+one image frame on your answer-page template. The page image already
+contains the selected number of solved grids and their puzzle labels.
+The final page may contain fewer solutions. PNGs are embedded drawing
+objects in the Excel workbook; image import support depends on the app.
+The Solution pages only button downloads this image workbook directly.
+
+WHY ARE THERE MULTIPLE PUZZLE BATCH FILES IN THIS ZIP?
 Canva has a strict design limit (typically 100 pages per project/document).
 Attempting to generate 300+ pages in a single Canva design causes Canva
 to limit generation or fail.
@@ -77,8 +180,9 @@ Generated by KDP Activity Studio
 export async function buildCanvaSudokuExcel(options = {}) {
     const { gridImages = [] } = options;
     if (typeof window.ExcelJS !== "undefined" && gridImages && gridImages.length > 0) {
-        return await buildCanvaSudokuExcelJS(options);
+        return await appendSeparateSolutions(await buildCanvaSudokuExcelJS(options), options, "sudoku");
     }
+    if (gridImages.length) throw new Error("Image embedding library unavailable. Reload and retry the export.");
     return buildCanvaSudokuSheetJS(options);
 }
 
@@ -674,8 +778,9 @@ export function buildSolutionsOnlyExcel({
 export async function buildCanvaWordSearchExcel(options = {}) {
     const { gridImages = [] } = options;
     if (typeof window.ExcelJS !== "undefined" && gridImages && gridImages.length > 0) {
-        return await buildCanvaWordSearchExcelJS(options);
+        return await appendSeparateSolutions(await buildCanvaWordSearchExcelJS(options), options, "wordsearch");
     }
+    if (gridImages.length) throw new Error("Image embedding library unavailable. Reload and retry the export.");
     return buildCanvaWordSearchSheetJS(options);
 }
 

@@ -1,3 +1,4 @@
+import {setupWorkflow, syncWorkflowMode, updateWorkflow, activeBook} from "./workflow.js?v=pro8";
 /**
  * KDP Activity Studio · Main Application Controller
  * Handles reactive UI state, real-time preview rendering, and production exports
@@ -12,14 +13,14 @@ import {
     TYPE_CONFIGS,
     generateSudokuPuzzle,
     generateSudokuBatch
-} from "./sudoku_engine.js";
+} from "./sudoku_engine.js?v=pro8";
 
 import {
     DATE_FORMAT_PRESETS,
     CALENDAR_THEMES,
     getPuzzleDateInfo,
     renderMiniMonthCalendarCanvas
-} from "./calendar_builder.js";
+} from "./calendar_builder.js?v=pro8";
 
 import {
     generateWordSearchPuzzle,
@@ -28,7 +29,7 @@ import {
     maxWordsForGrid,
     parseWordSearchText,
     parseWordSearchCsv
-} from "./wordsearch_engine.js";
+} from "./wordsearch_engine.js?v=pro8";
 
 import {
     SUDOKU_PRESETS,
@@ -40,24 +41,27 @@ import {
     renderWordSearchGridCanvas,
     renderWordSearchBookPageCanvas,
     renderWordSearchSolutionPageCanvas
-} from "./canvas_renderer.js";
+} from "./canvas_renderer.js?v=pro8";
 
 import {
     buildCanvaSudokuExcel,
     buildCanvaWordSearchExcel,
-    buildSolutionsOnlyExcel,
+    buildSolutionPageWorkbooks,
     generateCanvaInstructions
-} from "./excel_exporter.js";
+} from "./excel_exporter.js?v=pro8";
 
 import {
     buildSudokuKdpPdf,
     buildWordSearchKdpPdf
-} from "./pdf_exporter.js";
+} from "./pdf_exporter.js?v=pro8";
+import {TRIM_DIMENSIONS_PT} from "./book_layout.js?v=pro8";
 
 // Global Studio State
 const state = {
-    mode: "sudoku", // "sudoku" | "wordsearch"
-    theme: localStorage.getItem("studio_theme") || "light",
+    mode: "wordsearch", // "sudoku" | "wordsearch"
+    bookTitles: {wordsearch: "The Word Search Collection", sudoku: "The Sudoku Collection"},
+    titlePages: {wordsearch: true, sudoku: true},
+    theme: (() => { try { return localStorage.getItem("studio_theme") || "light"; } catch { return "light"; } })(),
     viewMode: "book_page", // "book_page" | "single_puzzle" | "single_solution" | "solution_page"
     currentPage: 1,
 
@@ -72,9 +76,9 @@ const state = {
     canvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
 
     // Volume & Layout (Word Search)
-    wsPuzzleCount: 12,
+    wsPuzzleCount: 50,
     wsStartNumber: 1,
-    wsTargetCountEnforced: false,
+    wsTargetCountEnforced: true,
     wsSolutionsPerPage: 4,
     wsTrimChoice: "8.5 x 11 inches (Letter)",
     wsSameExcel: true,
@@ -119,9 +123,9 @@ const state = {
     wsRawText: LANGUAGE_CONFIGS["English"].sample_words,
     wsCsvContent: null,
     wsCsvFileName: null,
-    wsGridChoice: "12x10",
-    wsRows: 12,
-    wsCols: 10,
+    wsGridChoice: "auto",
+    wsRows: 13,
+    wsCols: 13,
     wsWordsPerPage: 12,
     wsDifficulty: "medium",
     wsTitleTemplate: "{title}",
@@ -435,6 +439,7 @@ function setStudioMode(mode) {
         if (dom.wsRulesSection) dom.wsRulesSection.style.display = "block";
     }
     state.currentPage = 1;
+    syncWorkflowMode(state);
     refreshStudio();
 }
 
@@ -473,7 +478,7 @@ function getWsConfigHash() {
         state.wsSource,
         state.wsRawText,
         state.wsCsvFileName,
-        state.wsCsvContent ? state.wsCsvContent.length : 0
+        state.wsCsvContent || ""
     ].join("|");
 }
 
@@ -483,7 +488,7 @@ function getWsBaseChunks() {
     if (state.wsSource === "csv" && state.wsCsvContent) {
         groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
     } else {
-        const raw = state.wsRawText || LANGUAGE_CONFIGS[state.wsLanguage]?.sample_words || "";
+        const raw = state.wsSource === "csv" ? (state.wsCsvContent || "") : (state.wsRawText || "");
         groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
     }
 
@@ -523,15 +528,7 @@ function getWsBaseChunks() {
         }
     }
 
-    if (baseChunks.length === 0) {
-        const sample = ["LION", "TIGER", "LEOPARD", "ELEPHANT", "GIRAFFE", "MONKEY", "ZEBRA", "BEAR"];
-        baseChunks.push({
-            theme: state.wsThemeInput || "Animals",
-            words: sample,
-            allWords: sample,
-            chunkIndex: 0
-        });
-    }
+    state.wordPoolCount = Object.values(groups).reduce((n,words)=>n+words.filter(w=>w.length>=3).length,0);
     return baseChunks;
 }
 
@@ -568,7 +565,7 @@ function getWsPuzzleTitle(item, pNum) {
 
 // Determine total puzzle count needed for Word Search
 function getWsTotalNeeded(baseChunks) {
-    if (!baseChunks || baseChunks.length === 0) return 1;
+    if (!baseChunks || baseChunks.length === 0) return 0;
     if (state.wsTargetCountEnforced) {
         return Math.max(1, state.wsPuzzleCount || 12);
     }
@@ -660,6 +657,7 @@ function updatePuzzlesBatch() {
     } else {
         const baseChunks = getWsBaseChunks();
         state.totalPuzzlesCount = getWsTotalNeeded(baseChunks);
+        if (!state.totalPuzzlesCount) { state.puzzles = []; return; }
         const spp = state.wsSolutionsPerPage || 4;
 
         let totalPages = 1;
@@ -760,8 +758,8 @@ function updateCanvaBatchBadges() {
         } else {
             const batches = Math.ceil(totalPages / state.canvaBatchSize);
             dom.sdkCanvaBatchBadge.textContent = batches > 1
-                ? `${state.canvaBatchSize} / batch (${batches} files)`
-                : `${state.canvaBatchSize} / batch (1 file)`;
+                ? `${state.canvaBatchSize} / batch (${batches} puzzle files)`
+                : `${state.canvaBatchSize} / batch (1 puzzle file)`;
         }
     }
 
@@ -772,8 +770,8 @@ function updateCanvaBatchBadges() {
         } else {
             const batches = Math.ceil(totalPages / state.wsCanvaBatchSize);
             dom.wsCanvaBatchBadge.textContent = batches > 1
-                ? `${state.wsCanvaBatchSize} / batch (${batches} files)`
-                : `${state.wsCanvaBatchSize} / batch (1 file)`;
+                ? `${state.wsCanvaBatchSize} / batch (${batches} puzzle files)`
+                : `${state.wsCanvaBatchSize} / batch (1 puzzle file)`;
         }
     }
 }
@@ -805,7 +803,21 @@ function updateMiniCalendarThumbnail() {
 
 // Render the Active Stage View
 function renderStage() {
-    if (!state.puzzles || state.puzzles.length === 0) return;
+    state.previewError = "";
+    try { renderStageContent(); } catch (error) {
+        state.previewError = error.message;
+        dom.mainCanvas.width = dom.mainCanvas.width;
+    }
+    updateWorkflow(state);
+}
+
+function renderStageContent() {
+    if (!state.puzzles || state.puzzles.length === 0) {
+        dom.mainCanvas.width = dom.mainCanvas.width;
+        dom.stagePageSel.replaceChildren();
+        dom.btnPagePrev.disabled = dom.btnPageNext.disabled = true;
+        return;
+    }
 
     // Calculate pagination based on view mode & studio mode
     let totalPages = 1;
@@ -915,6 +927,9 @@ function renderSudokuStage(ctx, totalPages) {
         }
 
         const pageCnv = renderSudokuBookPageCanvas({
+            trimChoice: state.trimChoice,
+            bookTotalPages: activeBook(state).totalPages,
+            bookPageNum: state.currentPage + Number(activeBook(state).includeTitlePage),
             puzzlesSlice: pSlice,
             style: state.activeStyle,
             puzzlesPerPage: state.puzzlesPerPage,
@@ -937,6 +952,9 @@ function renderSudokuStage(ctx, totalPages) {
         const sSlice = state.puzzles;
 
         const solCnv = renderSudokuSolutionPageCanvas({
+            trimChoice: state.trimChoice,
+            bookTotalPages: activeBook(state).totalPages,
+            bookPageNum: state.currentPage + Number(activeBook(state).includeTitlePage) + activeBook(state).puzzlePages + 1,
             puzzlesSlice: sSlice,
             style: state.activeStyle,
             solutionsPerPage: state.solutionsPerPage,
@@ -1021,6 +1039,9 @@ function renderWordSearchStage(ctx, totalPages) {
 
     if (state.viewMode === "book_page") {
         const pageCnv = renderWordSearchBookPageCanvas({
+            trimChoice: state.wsTrimChoice,
+            bookTotalPages: activeBook(state).totalPages,
+            bookPageNum: state.currentPage + Number(activeBook(state).includeTitlePage),
             puzzle: p,
             style: state.wsActiveStyle,
             pageNum: state.currentPage,
@@ -1042,6 +1063,9 @@ function renderWordSearchStage(ctx, totalPages) {
         const sSlice = state.puzzles;
 
         const solCnv = renderWordSearchSolutionPageCanvas({
+            trimChoice: state.wsTrimChoice,
+            bookTotalPages: activeBook(state).totalPages,
+            bookPageNum: state.currentPage + Number(activeBook(state).includeTitlePage) + activeBook(state).puzzlePages + 1,
             puzzlesSlice: sSlice,
             style: state.wsActiveStyle,
             solutionsPerPage: solPerPage,
@@ -1090,10 +1114,16 @@ function renderWordSearchStage(ctx, totalPages) {
 
 // Master Refresh
 function refreshStudio() {
-    updatePuzzlesBatch();
-    updateMetrics();
-    updateMiniCalendarThumbnail();
-    renderStage();
+    try {
+        updatePuzzlesBatch();
+        updateMetrics();
+        updateMiniCalendarThumbnail();
+        renderStage();
+    } catch(error) {
+        state.previewError = error.message;
+        dom.mainCanvas.width = dom.mainCanvas.width;
+        updateWorkflow(state);
+    }
 }
 
 // Set Up Event Handlers
@@ -1106,8 +1136,10 @@ function setupEvents() {
     dom.themeToggleBtn.addEventListener("click", () => {
         const newTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", newTheme);
-        localStorage.setItem("studio_theme", newTheme);
+        try { localStorage.setItem("studio_theme", newTheme); } catch { /* Theme still works without storage. */ }
         dom.themeToggleBtn.textContent = newTheme === "dark" ? "☀️" : "🌙";
+        dom.themeToggleBtn.setAttribute("aria-pressed", String(newTheme === "dark"));
+        dom.themeToggleBtn.setAttribute("aria-label", newTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
     });
 
     // New Random Book Seed
@@ -1122,17 +1154,6 @@ function setupEvents() {
         }
         state.currentPage = 1;
         refreshStudio();
-    });
-
-    // Sidebar Tab Navigation
-    dom.sidebarTabBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            dom.sidebarTabBtns.forEach(b => b.classList.remove("active"));
-            dom.tabPanels.forEach(p => p.classList.remove("active"));
-            btn.classList.add("active");
-            const targetPanel = document.getElementById(btn.dataset.tab);
-            if (targetPanel) targetPanel.classList.add("active");
-        });
     });
 
     // View Mode Selector
@@ -1230,7 +1251,6 @@ function setupEvents() {
 
     dom.sameExcelTog.addEventListener("change", (e) => {
         state.sameExcel = e.target.checked;
-        dom.solPerPageSel.disabled = state.sameExcel;
     });
 
     dom.instructionsTog.addEventListener("change", (e) => {
@@ -1324,7 +1344,6 @@ function setupEvents() {
     if (dom.wsSameExcelTog) {
         dom.wsSameExcelTog.addEventListener("change", (e) => {
             state.wsSameExcel = e.target.checked;
-            if (dom.wsSolPerPageSel) dom.wsSolPerPageSel.disabled = state.wsSameExcel;
         });
     }
 
@@ -1834,6 +1853,7 @@ function setupEvents() {
     if (dom.wsAiExpanderHdr) {
         dom.wsAiExpanderHdr.addEventListener("click", () => {
             const isOpen = dom.wsAiExpanderBody.classList.toggle("open");
+            dom.wsAiExpanderHdr.setAttribute("aria-expanded", String(isOpen));
             dom.wsAiExpanderBody.style.display = isOpen ? "flex" : "none";
             dom.wsAiExpIcon.textContent = isOpen ? "▲" : "▼";
         });
@@ -1927,7 +1947,18 @@ function setupEvents() {
 }
 
 // Progress Bar Helper
+let lockedControls = [];
 function setProgress(percent, text) {
+    if (percent !== null && !state.isExporting) {
+        lockedControls = [...document.querySelectorAll("button, input, select, textarea, summary")].map(control=>[control, control.disabled]);
+        lockedControls.forEach(([control])=>control.disabled=true);
+        state.isExporting = true;
+    } else if (percent === null) {
+        lockedControls.forEach(([control,disabled])=>control.disabled=disabled);
+        lockedControls=[];
+        state.isExporting=false;
+        updateWorkflow(state);
+    }
     if (percent === null) {
         dom.exportProgressContainer.style.display = "none";
     } else {
@@ -1998,6 +2029,7 @@ async function getOrBuildFullPuzzlesBatch(onProgress) {
                 seed: (state.wsSeed || 42) + i * 19
             });
 
+            if (puzzle.unplacedWords.length) throw new Error(`Puzzle ${pNum}: ${puzzle.unplacedWords.length} words do not fit. Increase the grid size or reduce words per puzzle.`);
             puzzle.puzzleId = pNum;
             puzzle.theme = pTitle;
             puzzle.title = pTitle;
@@ -2079,7 +2111,7 @@ async function renderCanvaBulkImages(puzzles, onProgress) {
             });
             gridImages.push(gridCnv.toDataURL("image/png"));
 
-            if (state.sameExcel) {
+            {
                 const solCnv = renderSudokuGridCanvas({
                     puzzle: p,
                     style: state.activeStyle,
@@ -2101,7 +2133,7 @@ async function renderCanvaBulkImages(puzzles, onProgress) {
             });
             gridImages.push(gridCnv.toDataURL("image/png"));
 
-            if (state.wsSameExcel) {
+            {
                 const solCnv = renderWordSearchGridCanvas({
                     puzzle: p,
                     style: state.wsActiveStyle,
@@ -2123,8 +2155,48 @@ async function renderCanvaBulkImages(puzzles, onProgress) {
     return { gridImages, solutionImages, calendarImages, pageCalendarImages };
 }
 
+// Render the same composite answer pages used by preview and the book PDF.
+// Each resulting PNG is one complete page, even when it contains several grids.
+async function renderSolutionPageImages(puzzles, onProgress) {
+    const book = activeBook(state);
+    const pageCount = Math.ceil(puzzles.length / book.answers);
+    const pageImages = [];
+    for (let page = 0; page < pageCount; page++) {
+        const canvas = (book.ws ? renderWordSearchSolutionPageCanvas : renderSudokuSolutionPageCanvas)({
+            puzzlesSlice: puzzles.slice(page * book.answers, (page + 1) * book.answers),
+            solutionsPerPage: book.answers,
+            pageNum: page + 1,
+            bookPageNum: Number(book.includeTitlePage) + book.puzzlePages + 2 + page,
+            bookTotalPages: book.totalPages,
+            totalPages: pageCount,
+            trimChoice: book.trim,
+            style: book.ws ? state.wsActiveStyle : state.activeStyle,
+            dpi: 150
+        });
+        pageImages.push(canvas.toDataURL("image/png"));
+        canvas.width = 1; canvas.height = 1;
+        if (page % 3 === 0 || page === pageCount - 1) {
+            onProgress?.(Math.round((page + 1) / pageCount * 100));
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+    return pageImages;
+}
+
+function solutionWorkbookOptions(puzzles, solutionPageImages) {
+    const book = activeBook(state);
+    const [width, height] = TRIM_DIMENSIONS_PT[book.trim];
+    return {
+        puzzles, solutionPageImages, solutionsPerPage: book.answers,
+        batchSize: book.ws ? state.wsCanvaBatchSize : state.canvaBatchSize,
+        mode: state.mode, pageAspect: height / width
+    };
+}
+
 // Handle Canva Bulk Excel Export (with REAL embedded floating images)
 async function handleExportCanva() {
+    updateWorkflow(state);
+    if (state.isExporting || state.exportBlocked) return;
     try {
         setProgress(2, "Generating full puzzle collection for export...");
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
@@ -2134,6 +2206,11 @@ async function handleExportCanva() {
             fullPuzzles,
             pct => setProgress(15 + Math.round(pct * 0.55), `Embedding images into Canva Excel: ${pct}%...`)
         );
+
+        const separate = state.mode === "sudoku" ? !state.sameExcel : !state.wsSameExcel;
+        const solutionPageImages = separate
+            ? await renderSolutionPageImages(fullPuzzles, pct => setProgress(52 + Math.round(pct * 0.18), `Rendering answer pages: ${pct}%...`))
+            : [];
 
         setProgress(72, "Building Canva Bulk Excel workbook with embedded pictures...");
         const totalPuzzles = fullPuzzles.length;
@@ -2164,12 +2241,15 @@ async function handleExportCanva() {
                 puzzles: fullPuzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
+                solutionsPerPage: state.solutionsPerPage,
                 dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 pageDateStrings: state.dateEnabled ? pageDateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
+                solutionPageImages,
+                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
                 calendarImages,
                 pageCalendarImages,
                 batchSize
@@ -2178,10 +2258,13 @@ async function handleExportCanva() {
             result = await buildCanvaWordSearchExcel({
                 puzzles: fullPuzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
+                solutionsPerPage: state.wsSolutionsPerPage,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
+                solutionPageImages,
+                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
                 calendarImages,
                 batchSize
             });
@@ -2224,16 +2307,27 @@ async function handleExportCanva() {
     }
 }
 
-// Handle Solutions Excel Export
+// Download only complete answer pages, with each page embedded in Excel.
 async function handleExportSolutions() {
+    updateWorkflow(state);
+    if (state.isExporting || state.exportBlocked) return;
     try {
         setProgress(5, "Generating full puzzle collection for solutions export...");
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
-        setProgress(85, "Building solutions Excel spreadsheet...");
-        const buffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        const filename = state.mode === "sudoku" ? "sudoku_solutions.xlsx" : "wordsearch_solutions.xlsx";
-        saveAs(blob, filename);
+        setProgress(40, "Rendering complete answer pages...");
+        const pageImages = await renderSolutionPageImages(fullPuzzles,
+            pct => setProgress(40 + Math.round(pct * 0.4), `Rendering answer pages: ${pct}%...`));
+        setProgress(82, "Embedding answer-page images into Excel...");
+        const result = await buildSolutionPageWorkbooks(solutionWorkbookOptions(fullPuzzles,pageImages));
+        if (result.files.length === 1) {
+            saveAs(new Blob([result.files[0].buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
+                result.files[0].filename);
+        } else {
+            const zip = new window.JSZip();
+            result.files.forEach(file => zip.file(file.filename,file.buffer));
+            const blob = await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+            saveAs(blob, `${state.mode}_solution_pages.zip`);
+        }
         setTimeout(() => setProgress(null), 1000);
     } catch (err) {
         setProgress(null);
@@ -2243,6 +2337,8 @@ async function handleExportSolutions() {
 
 // Handle KDP Print PDF Export
 async function handleExportPdf() {
+    updateWorkflow(state);
+    if (state.isExporting || state.pdfBlocked) return;
     try {
         setProgress(2, "Generating full puzzle collection for PDF book...");
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
@@ -2297,6 +2393,8 @@ async function handleExportPdf() {
 
         if (state.mode === "sudoku") {
             pdfBuffer = await buildSudokuKdpPdf({
+                bookTitle: state.bookTitles[state.mode],
+                includeTitlePage: state.titlePages[state.mode],
                 puzzles: fullPuzzles,
                 style: state.activeStyle,
                 puzzlesPerPage: state.puzzlesPerPage,
@@ -2313,6 +2411,8 @@ async function handleExportPdf() {
             filename = "sudoku_kdp_interior.pdf";
         } else {
             pdfBuffer = await buildWordSearchKdpPdf({
+                bookTitle: state.bookTitles[state.mode],
+                includeTitlePage: state.titlePages[state.mode],
                 puzzles: fullPuzzles,
                 style: state.wsActiveStyle,
                 solutionsPerPage: state.wsSolutionsPerPage || 4,
@@ -2338,6 +2438,8 @@ async function handleExportPdf() {
 
 // Handle Complete 300 DPI ZIP Bundle Export
 async function handleExportZip() {
+    updateWorkflow(state);
+    if (state.isExporting || state.exportBlocked) return;
     if (typeof window.JSZip === "undefined") {
         alert("JSZip library not loaded.");
         return;
@@ -2483,8 +2585,12 @@ async function handleExportZip() {
             }
         }
 
-        // Add Canva Excel with embedded pictures
+        // Add Canva Excel with embedded pictures and complete answer-page images.
         setProgress(72, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
+        const solutionPageImages = (state.mode === "sudoku" ? !state.sameExcel : !state.wsSameExcel)
+            ? await renderSolutionPageImages(fullPuzzles,
+                pct => setProgress(72 + Math.round(pct * 0.06), `Rendering answer pages: ${pct}%...`))
+            : [];
         const dateStrings = fullPuzzles.map((_, i) => {
             const dateIdx = (state.dateScope === "per_page")
                 ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
@@ -2501,12 +2607,15 @@ async function handleExportZip() {
                 puzzles: fullPuzzles,
                 puzzlesPerPage: state.puzzlesPerPage,
                 includeSolutionInSameExcel: state.sameExcel,
+                solutionsPerPage: state.solutionsPerPage,
                 dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 pageDateStrings: state.dateEnabled ? pageDateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
+                solutionPageImages,
+                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
                 calendarImages,
                 pageCalendarImages,
                 batchSize
@@ -2529,18 +2638,17 @@ async function handleExportZip() {
                 zip.file("sudoku_canva_bulk.xlsx", canvaResult.files[0].buffer);
             }
 
-            if (!state.sameExcel) {
-                const solBuffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
-                zip.file("sudoku_solutions.xlsx", solBuffer);
-            }
         } else {
             const canvaResult = await buildCanvaWordSearchExcel({
                 puzzles: fullPuzzles,
                 includeSolutionInSameExcel: state.wsSameExcel,
+                solutionsPerPage: state.wsSolutionsPerPage,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
                 gridImages,
                 solutionImages,
+                solutionPageImages,
+                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
                 calendarImages,
                 batchSize
             });
@@ -2562,10 +2670,6 @@ async function handleExportZip() {
                 zip.file("wordsearch_canva_bulk.xlsx", canvaResult.files[0].buffer);
             }
 
-            if (!state.wsSameExcel) {
-                const solBuffer = buildSolutionsOnlyExcel({ puzzles: fullPuzzles });
-                zip.file("wordsearch_solutions.xlsx", solBuffer);
-            }
         }
 
         // Generate final ZIP
@@ -2589,6 +2693,8 @@ async function handleExportZip() {
 
 // Bootstrap
 window.addEventListener("DOMContentLoaded", () => {
+    dom.themeToggleBtn.setAttribute("aria-pressed", String(state.theme === "dark"));
+    dom.themeToggleBtn.setAttribute("aria-label", state.theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
     if (state.theme === "dark") {
         document.documentElement.setAttribute("data-theme", "dark");
         dom.themeToggleBtn.textContent = "☀️";
@@ -2611,5 +2717,7 @@ window.addEventListener("DOMContentLoaded", () => {
     updateWsSummaryCard();
     updateWsCapacityCard();
     setupEvents();
-    refreshStudio();
+    setupWorkflow(state, refreshStudio);
+    setStudioMode(state.mode);
+    document.fonts.ready.then(refreshStudio);
 });
