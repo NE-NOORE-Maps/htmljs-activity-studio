@@ -468,7 +468,7 @@
 <label for="ws-theme-input">Theme / Puzzle Title</label>
 <input id="ws-theme-input" type="text" value="Animals"/>
 </div>
-</div><div class="file-drop-area" id="ws-csv-dropzone" style="display:none;">
+</div><div class="file-drop-area" id="ws-csv-dropzone" role="button" tabindex="0" aria-label="Upload a CSV word list" style="display:none;">
 <div class="file-drop-icon">📄</div>
 <div class="file-drop-text" id="ws-csv-file-label">Click or Drag &amp; Drop CSV here</div>
 <div class="file-drop-sub">Supports 'theme,word' (multi-theme) or single-column 'word'</div>
@@ -558,12 +558,19 @@
 <div class="tab-panel" id="tab-review"><div class="step-heading"><h2>Review your book</h2><p>Check your interior before downloading.</p></div><div class="settings-column review-overview"><div aria-live="polite" id="book-review"></div><div id="review-checks"></div><p class="review-note">For black ink on white paper, with no bleed. Review the PDF in Amazon’s Print Previewer before publishing.</p><a class="quiet-link" href="https://kdp.amazon.com/en_US/help/topic/G201857950" rel="noopener" target="_blank">Amazon paperback guidelines ↗</a></div><div class="settings-column review-downloads"><div data-studio="sudoku"><details class="advanced"><summary>Canva workbook options</summary><div class="details-body"><div class="toggle-row">
 <div>
 <div class="toggle-label">Include Solution in Same Excel</div>
-<div class="toggle-sub">On: pair puzzles and answers. Off: separate solution workbooks, with each complete answer page embedded as an image.</div>
+<div class="toggle-sub">On: pair puzzles and answers in one workbook. Off: separate solution workbook (layout set below).</div>
 </div>
 <label class="switch">
 <input aria-label="Include Solution in Same Excel" checked="" id="sdk-same-excel-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
+</div><div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
+<label id="sdk-sol-layout-label">Solutions layout</label>
+<div class="preset-pills" id="sdk-sol-layout-pills" aria-labelledby="sdk-sol-layout-label" role="radiogroup">
+<button class="preset-pill-btn active" data-sol-layout="per_grid" role="radio" type="button">One image per grid</button>
+<button class="preset-pill-btn" data-sol-layout="per_page" role="radio" type="button">One image per answer page</button>
+</div>
+<div class="field-help" id="sdk-sol-layout-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;"></div>
 </div><div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
 <label for="sdk-canva-batch-preset">
                                 Canva Bulk Batch Split
@@ -585,12 +592,19 @@
 </div></div></details></div><div data-studio="wordsearch"><details class="advanced"><summary>Canva workbook options</summary><div class="details-body"><div class="toggle-row">
 <div>
 <div class="toggle-label">Include Solution in Same Excel</div>
-<div class="toggle-sub">On: pair puzzles and answers. Off: separate solution workbooks, with each complete answer page embedded as an image.</div>
+<div class="toggle-sub">On: pair puzzles and answers in one workbook. Off: separate solution workbook (layout set below).</div>
 </div>
 <label class="switch">
 <input aria-label="Include Solution in Same Excel" checked="" id="ws-same-excel-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
+</div><div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
+<label id="ws-sol-layout-label">Solutions layout</label>
+<div class="preset-pills" id="ws-sol-layout-pills" aria-labelledby="ws-sol-layout-label" role="radiogroup">
+<button class="preset-pill-btn active" data-sol-layout="per_grid" role="radio" type="button">One image per grid</button>
+<button class="preset-pill-btn" data-sol-layout="per_page" role="radio" type="button">One image per answer page</button>
+</div>
+<div class="field-help" id="ws-sol-layout-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;"></div>
 </div><div class="form-group" style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
 <label for="ws-canva-batch-preset">
                                 Canva Bulk Batch Split

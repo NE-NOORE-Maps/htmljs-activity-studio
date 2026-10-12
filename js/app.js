@@ -72,6 +72,7 @@ const state = {
     solutionsPerPage: 6,
     trimChoice: "8.5 x 11 inches (Letter)",
     sameExcel: true,
+    sdkSolutionImageMode: "per_grid", // "per_grid" (one PNG per solution) | "per_page" (composed answer page)
     includeInstructions: true,
     canvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
 
@@ -82,6 +83,7 @@ const state = {
     wsSolutionsPerPage: 4,
     wsTrimChoice: "8.5 x 11 inches (Letter)",
     wsSameExcel: true,
+    wsSolutionImageMode: "per_grid", // "per_grid" | "per_page"
     wsShowWordBank: true,
     wsWordCols: 3,
     wsCanvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
@@ -162,6 +164,8 @@ const dom = {
     solPerPageSel: document.getElementById("sdk-sol-per-page"),
     trimChoiceSel: document.getElementById("sdk-trim-choice"),
     sameExcelTog: document.getElementById("sdk-same-excel-tog"),
+    sdkSolLayoutBtns: document.querySelectorAll("#sdk-sol-layout-pills .preset-pill-btn"),
+    sdkSolLayoutHelp: document.getElementById("sdk-sol-layout-help"),
     instructionsTog: document.getElementById("sdk-instructions-tog"),
     sdkCanvaBatchPreset: document.getElementById("sdk-canva-batch-preset"),
     sdkCanvaBatchBadge: document.getElementById("sdk-canva-batch-badge"),
@@ -178,6 +182,8 @@ const dom = {
     wsWordColsSel: document.getElementById("ws-word-cols-select"),
     wsShowBankTog: document.getElementById("ws-show-bank-tog"),
     wsSameExcelTog: document.getElementById("ws-same-excel-tog"),
+    wsSolLayoutBtns: document.querySelectorAll("#ws-sol-layout-pills .preset-pill-btn"),
+    wsSolLayoutHelp: document.getElementById("ws-sol-layout-help"),
     wsTargetCountTog: document.getElementById("ws-target-count-tog"),
     wsCanvaBatchPreset: document.getElementById("ws-canva-batch-preset"),
     wsCanvaBatchBadge: document.getElementById("ws-canva-batch-badge"),
@@ -414,6 +420,16 @@ function updateWsLanguage(langKey) {
         dom.wsDownSimpleCsv.textContent = `📥 Simple CSV (${cfg.flag})`;
     }
     updateWsPromptBox();
+}
+
+// True when the word list or theme no longer matches the language sample, i.e.
+// the user would lose their own edits if we overwrite them.
+function wsEditorHasCustomContent(cfg) {
+    const c = cfg || LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+    const customWords = state.wsSource !== "csv"
+        && (state.wsRawText || "").trim() !== (String(c.sample_words || "").trim());
+    const customTheme = (state.wsThemeInput || "").trim() !== (c.default_theme || "").trim();
+    return customWords || customTheme;
 }
 
 // Switch between Studio Modes (Sudoku vs Word Search)
@@ -1126,11 +1142,54 @@ function refreshStudio() {
     }
 }
 
+// Wire the "Solutions layout" pill group (one image per grid vs one composed
+// image per answer page) and keep the Same-Excel toggle + help text in sync.
+function setupSolutionLayoutPills(btns, helpEl, sameExcelTog, prefix) {
+    if (!btns || !btns.length) return;
+    const modeKey = prefix === "ws" ? "wsSolutionImageMode" : "sdkSolutionImageMode";
+    const helpText = {
+        per_grid: "One image per solution grid — best for templates with a single solution frame, easy to bulk-map in Canva.",
+        per_page: `Grids are composed onto one image using Answers per page (e.g. 4 solutions in one image). Exported as a separate solution workbook.`
+    };
+    const sync = () => {
+        const perPage = state[modeKey] === "per_page";
+        if (sameExcelTog) {
+            sameExcelTog.disabled = perPage;
+            if (perPage) sameExcelTog.checked = false;
+        }
+        if (helpEl) helpEl.textContent = helpText[state[modeKey]];
+        btns.forEach(b => {
+            const on = b.dataset.solLayout === state[modeKey];
+            b.classList.toggle("active", on);
+            b.setAttribute("aria-checked", String(on));
+        });
+    };
+    if (!btns._solLayoutWired) {
+        btns._solLayoutWired = true;
+        btns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                state[modeKey] = btn.dataset.solLayout === "per_page" ? "per_page" : "per_grid";
+                if (state[modeKey] === "per_page") {
+                    if (prefix === "ws") state.wsSameExcel = false;
+                    if (prefix === "sdk") state.sameExcel = false;
+                }
+                sync();
+                updateWorkflow(state);
+            });
+        });
+    }
+    sync();
+}
+
 // Set Up Event Handlers
 function setupEvents() {
     // Mode Switcher (Sudoku vs Word Search)
     dom.modeSudokuBtn.addEventListener("click", () => setStudioMode("sudoku"));
     dom.modeWordsearchBtn.addEventListener("click", () => setStudioMode("wordsearch"));
+
+    // Solution image granularity (one PNG per grid vs one composed page image)
+    setupSolutionLayoutPills(dom.sdkSolLayoutBtns, dom.sdkSolLayoutHelp, dom.sameExcelTog, "sdk");
+    setupSolutionLayoutPills(dom.wsSolLayoutBtns, dom.wsSolLayoutHelp, dom.wsSameExcelTog, "ws");
 
     // Theme Switcher (Dark / Light)
     dom.themeToggleBtn.addEventListener("click", () => {
@@ -1251,7 +1310,10 @@ function setupEvents() {
 
     dom.sameExcelTog.addEventListener("change", (e) => {
         state.sameExcel = e.target.checked;
+        if (state.mode === "sudoku") updateWorkflow(state);
     });
+
+    setupSolutionLayoutPills(dom.sdkSolLayoutBtns, dom.sdkSolLayoutHelp, dom.sameExcelTog, "sdk");
 
     dom.instructionsTog.addEventListener("change", (e) => {
         state.includeInstructions = e.target.checked;
@@ -1344,8 +1406,11 @@ function setupEvents() {
     if (dom.wsSameExcelTog) {
         dom.wsSameExcelTog.addEventListener("change", (e) => {
             state.wsSameExcel = e.target.checked;
+            if (state.mode === "wordsearch") updateWorkflow(state);
         });
     }
+
+    setupSolutionLayoutPills(dom.wsSolLayoutBtns, dom.wsSolLayoutHelp, dom.wsSameExcelTog, "ws");
 
     if (dom.wsTargetCountTog) {
         dom.wsTargetCountTog.addEventListener("change", (e) => {
@@ -1703,6 +1768,14 @@ function setupEvents() {
     if (dom.wsLangSelect) {
         dom.wsLangSelect.addEventListener("change", (e) => {
             const lang = e.target.value;
+            const prevLang = state.wsLanguage;
+            const prevCfg = LANGUAGE_CONFIGS[prevLang] || LANGUAGE_CONFIGS["English"];
+            if (wsEditorHasCustomContent(prevCfg) && !confirm(
+                "Changing the language replaces your current word list and theme with the new language's sample. Your edits will be lost. Continue?"
+            )) {
+                e.target.value = prevLang;
+                return;
+            }
             updateWsLanguage(lang);
             const cfg = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS["English"];
             state.wsThemeInput = cfg.default_theme;
@@ -1725,6 +1798,11 @@ function setupEvents() {
     if (dom.wsResetSampleBtn) {
         dom.wsResetSampleBtn.addEventListener("click", () => {
             const cfg = LANGUAGE_CONFIGS[state.wsLanguage] || LANGUAGE_CONFIGS["English"];
+            if (wsEditorHasCustomContent(cfg) && !confirm(
+                "Replace your current word list and theme with this language's sample content?"
+            )) {
+                return;
+            }
             state.wsThemeInput = cfg.default_theme;
             if (dom.wsThemeInput) dom.wsThemeInput.value = state.wsThemeInput;
             state.wsRawText = cfg.sample_words;
@@ -1785,6 +1863,13 @@ function setupEvents() {
     // CSV File Drag & Drop + Click
     if (dom.wsCsvDropzone && dom.wsCsvFileInput) {
         dom.wsCsvDropzone.addEventListener("click", () => dom.wsCsvFileInput.click());
+
+        dom.wsCsvDropzone.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                dom.wsCsvFileInput.click();
+            }
+        });
 
         dom.wsCsvDropzone.addEventListener("dragover", (e) => {
             e.preventDefault();
@@ -1946,6 +2031,38 @@ function setupEvents() {
     dom.btnExportZip.addEventListener("click", handleExportZip);
 }
 
+// In-page toast: non-blocking feedback replacing native alert() popups.
+function showToast(message, type = "error", duration = 6000) {
+    let host = document.getElementById("toast-host");
+    if (!host) {
+        host = document.createElement("div");
+        host.id = "toast-host";
+        host.className = "toast-host";
+        host.setAttribute("role", "status");
+        host.setAttribute("aria-live", "polite");
+        document.body.appendChild(host);
+    }
+    const el = document.createElement("div");
+    el.className = `toast toast-${type}`;
+    el.textContent = message;
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "toast-close";
+    close.setAttribute("aria-label", "Dismiss message");
+    close.textContent = "\u00d7";
+    close.addEventListener("click", () => dismiss());
+    el.appendChild(close);
+    host.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    let timer = setTimeout(dismiss, duration);
+    function dismiss() {
+        clearTimeout(timer);
+        el.classList.remove("show");
+        setTimeout(() => el.remove(), 250);
+    }
+    return el;
+}
+
 // Progress Bar Helper
 let lockedControls = [];
 function setProgress(percent, text) {
@@ -2050,118 +2167,15 @@ async function getOrBuildFullPuzzlesBatch(onProgress) {
 }
 
 // Helper to render images for Canva Bulk cell embedding
-async function renderCanvaBulkImages(puzzles, onProgress) {
-    const total = puzzles.length;
-    const totalPages = Math.ceil(total / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
-    const gridImages = [];
-    const solutionImages = [];
-    const calendarImages = [];
-    const pageCalendarImages = [];
-
-    // Pre-generate page calendar images when calendar image mode is active
-    if (state.dateEnabled && state.dateMode === "calendar_image") {
-        for (let p = 0; p < totalPages; p++) {
-            const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
-            const calCnv = renderMiniMonthCalendarCanvas({
-                year: info.year,
-                month: info.month,
-                highlightDay: info.highlightDay,
-                theme: state.calTheme,
-                firstDaySunday: state.calSunday,
-                showCardBorder: state.calBorder,
-                showYear: state.calShowYear
-            });
-            pageCalendarImages.push(calCnv.toDataURL("image/png"));
-        }
-    }
-
-    for (let i = 0; i < total; i++) {
-        const p = puzzles[i];
-        let dTxt = null;
-
-        if (state.dateEnabled) {
-            const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
-                : i;
-            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
-            dTxt = info.dateStr;
-
-            if (state.dateMode === "calendar_image") {
-                const calCnv = renderMiniMonthCalendarCanvas({
-                    year: info.year,
-                    month: info.month,
-                    highlightDay: info.highlightDay,
-                    theme: state.calTheme,
-                    firstDaySunday: state.calSunday,
-                    showCardBorder: state.calBorder,
-                    showYear: state.calShowYear
-                });
-                calendarImages.push(calCnv.toDataURL("image/png"));
-            }
-        }
-
-        if (state.mode === "sudoku") {
-            const gridCnv = renderSudokuGridCanvas({
-                puzzle: p,
-                style: state.activeStyle,
-                cellMm: 12.0,
-                dpi: 150,
-                solution: false,
-                dateText: dTxt
-            });
-            gridImages.push(gridCnv.toDataURL("image/png"));
-
-            {
-                const solCnv = renderSudokuGridCanvas({
-                    puzzle: p,
-                    style: state.activeStyle,
-                    cellMm: 12.0,
-                    dpi: 150,
-                    solution: true
-                });
-                solutionImages.push(solCnv.toDataURL("image/png"));
-            }
-        } else {
-            const gridCnv = renderWordSearchGridCanvas({
-                puzzle: p,
-                style: state.wsActiveStyle,
-                cellMm: 9.0,
-                dpi: 150,
-                solution: false,
-                dateText: dTxt,
-                showGridLines: true
-            });
-            gridImages.push(gridCnv.toDataURL("image/png"));
-
-            {
-                const solCnv = renderWordSearchGridCanvas({
-                    puzzle: p,
-                    style: state.wsActiveStyle,
-                    cellMm: 9.0,
-                    dpi: 150,
-                    solution: true,
-                    showGridLines: true
-                });
-                solutionImages.push(solCnv.toDataURL("image/png"));
-            }
-        }
-
-        if (onProgress && (i % 4 === 0 || i === total - 1)) {
-            onProgress(Math.round(((i + 1) / total) * 65));
-            await new Promise(r => setTimeout(r, 0));
-        }
-    }
-
-    return { gridImages, solutionImages, calendarImages, pageCalendarImages };
-}
-
 // Render the same composite answer pages used by preview and the book PDF.
 // Each resulting PNG is one complete page, even when it contains several grids.
-async function renderSolutionPageImages(puzzles, onProgress) {
+// startPage/endPage let callers stream a bounded range of answer pages.
+async function renderSolutionPageImages(puzzles, onProgress, startPage = 0, endPage = null) {
     const book = activeBook(state);
     const pageCount = Math.ceil(puzzles.length / book.answers);
+    const lastPage = endPage == null ? pageCount : Math.min(endPage, pageCount);
     const pageImages = [];
-    for (let page = 0; page < pageCount; page++) {
+    for (let page = startPage; page < lastPage; page++) {
         const canvas = (book.ws ? renderWordSearchSolutionPageCanvas : renderSudokuSolutionPageCanvas)({
             puzzlesSlice: puzzles.slice(page * book.answers, (page + 1) * book.answers),
             solutionsPerPage: book.answers,
@@ -2171,26 +2185,138 @@ async function renderSolutionPageImages(puzzles, onProgress) {
             totalPages: pageCount,
             trimChoice: book.trim,
             style: book.ws ? state.wsActiveStyle : state.activeStyle,
-            dpi: 150
+            dpi: 300
         });
         pageImages.push(canvas.toDataURL("image/png"));
         canvas.width = 1; canvas.height = 1;
-        if (page % 3 === 0 || page === pageCount - 1) {
-            onProgress?.(Math.round((page + 1) / pageCount * 100));
+        if ((page - startPage) % 3 === 0 || page === lastPage - 1) {
+            onProgress?.(Math.round(((page - startPage + 1) / Math.max(1, lastPage - startPage)) * 100));
             await new Promise(resolve => setTimeout(resolve, 0));
         }
     }
     return pageImages;
 }
 
-function solutionWorkbookOptions(puzzles, solutionPageImages) {
-    const book = activeBook(state);
-    const [width, height] = TRIM_DIMENSIONS_PT[book.trim];
-    return {
-        puzzles, solutionPageImages, solutionsPerPage: book.answers,
-        batchSize: book.ws ? state.wsCanvaBatchSize : state.canvaBatchSize,
-        mode: state.mode, pageAspect: height / width
-    };
+// Render only one slice of puzzle/page bitmaps so exports never hold the whole
+// book's images in memory at once. Arrays are globally indexed but only the
+// requested range is filled (the rest stay empty and cost nothing).
+async function renderImageSlice(puzzles, { puzStart, puzEnd, pageStart, pageEnd, needSolution = false, onProgress }) {
+    const ws = state.mode === "wordsearch";
+    const ppp = ws ? 1 : state.puzzlesPerPage;
+    const total = puzzles.length;
+    const totalPages = Math.ceil(total / ppp);
+    const gridImages = new Array(total);
+    const solutionImages = new Array(total);
+    const calendarImages = new Array(total);
+    const pageCalendarImages = new Array(totalPages);
+
+    const calOpts = (info) => ({
+        year: info.year, month: info.month, highlightDay: info.highlightDay,
+        theme: state.calTheme, firstDaySunday: state.calSunday,
+        showCardBorder: state.calBorder, showYear: state.calShowYear
+    });
+
+    if (state.dateEnabled && state.dateMode === "calendar_image") {
+        for (let p = pageStart; p < pageEnd; p++) {
+            const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
+            const cnv = renderMiniMonthCalendarCanvas(calOpts(info));
+            pageCalendarImages[p] = cnv.toDataURL("image/png");
+            cnv.width = 1; cnv.height = 1;
+        }
+    }
+
+    for (let i = puzStart; i < puzEnd; i++) {
+        const p = puzzles[i];
+        let dTxt = null;
+        if (state.dateEnabled) {
+            const dateIdx = (state.dateScope === "per_page") ? Math.floor(i / ppp) : i;
+            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
+            dTxt = info.dateStr;
+            if (state.dateMode === "calendar_image") {
+                const cnv = renderMiniMonthCalendarCanvas(calOpts(info));
+                calendarImages[i] = cnv.toDataURL("image/png");
+                cnv.width = 1; cnv.height = 1;
+            }
+        }
+
+        let gridCnv, solCnv = null;
+        if (ws) {
+            gridCnv = renderWordSearchGridCanvas({ puzzle: p, style: state.wsActiveStyle, cellMm: 9.0, dpi: 300, solution: false, dateText: dTxt, showGridLines: true });
+            gridImages[i] = gridCnv.toDataURL("image/png");
+            if (needSolution) {
+                solCnv = renderWordSearchGridCanvas({ puzzle: p, style: state.wsActiveStyle, cellMm: 9.0, dpi: 300, solution: true, showGridLines: true });
+                solutionImages[i] = solCnv.toDataURL("image/png");
+            }
+        } else {
+            gridCnv = renderSudokuGridCanvas({ puzzle: p, style: state.activeStyle, cellMm: 12.0, dpi: 300, solution: false, dateText: dTxt });
+            gridImages[i] = gridCnv.toDataURL("image/png");
+            if (needSolution) {
+                solCnv = renderSudokuGridCanvas({ puzzle: p, style: state.activeStyle, cellMm: 12.0, dpi: 300, solution: true });
+                solutionImages[i] = solCnv.toDataURL("image/png");
+            }
+        }
+        gridCnv.width = 1; gridCnv.height = 1;
+        if (solCnv) { solCnv.width = 1; solCnv.height = 1; }
+
+        if (onProgress && ((i - puzStart) % 4 === 0 || i === puzEnd - 1)) {
+            onProgress(Math.round(((i - puzStart + 1) / Math.max(1, puzEnd - puzStart)) * 100));
+            await new Promise(r => setTimeout(r, 0));
+        }
+    }
+    return { gridImages, solutionImages, calendarImages, pageCalendarImages };
+}
+
+// Render per-grid solution PNGs for a slice of puzzles (one image per grid).
+async function renderSolutionGridRange(puzzles, puzStart, puzEnd, onProgress) {
+    const ws = state.mode === "wordsearch";
+    const out = [];
+    for (let i = puzStart; i < puzEnd; i++) {
+        const p = puzzles[i];
+        const cnv = ws
+            ? renderWordSearchGridCanvas({ puzzle: p, style: state.wsActiveStyle, cellMm: 9.0, dpi: 300, solution: true, showGridLines: true })
+            : renderSudokuGridCanvas({ puzzle: p, style: state.activeStyle, cellMm: 12.0, dpi: 300, solution: true });
+        out.push(cnv.toDataURL("image/png"));
+        cnv.width = 1; cnv.height = 1;
+        if ((i - puzStart) % 4 === 0 || i === puzEnd - 1) {
+            onProgress?.(Math.round(((i - puzStart + 1) / Math.max(1, puzEnd - puzStart)) * 100));
+            await new Promise(r => setTimeout(r, 0));
+        }
+    }
+    return out;
+}
+
+// Build the separate solution workbooks (streamed by answer-page chunks) for
+// both granularity modes. Returns an array of file descriptors.
+async function buildSeparateSolutionFiles(fullPuzzles, { imageMode, answers, batchSize, startNumber, mode, pageAspect, onProgress, solutionGridProvider = null }) {
+    const total = fullPuzzles.length;
+    const totalSolPages = Math.ceil(total / answers);
+    const chunk = batchSize > 0 ? batchSize : totalSolPages;
+    const files = [];
+    for (let ps = 0; ps < totalSolPages; ps += chunk) {
+        const pe = Math.min(totalSolPages, ps + chunk);
+        const puzStart = ps * answers;
+        const puzEnd = Math.min(total, pe * answers);
+        const slice = fullPuzzles.slice(puzStart, puzEnd);
+        const puzzleNumberOffset = startNumber - 1 + puzStart;
+        if (imageMode === "per_page") {
+            const pageImages = await renderSolutionPageImages(fullPuzzles, onProgress, ps, pe);
+            const res = await buildSolutionPageWorkbooks({
+                puzzles: slice, solutionPageImages: pageImages, solutionsPerPage: answers,
+                batchSize: 0, mode, pageAspect, pageOffset: ps, puzzleNumberOffset
+            });
+            files.push(...res.files);
+        } else {
+            const solImages = solutionGridProvider
+                ? await solutionGridProvider(puzStart, puzEnd)
+                : await renderSolutionGridRange(fullPuzzles, puzStart, puzEnd, onProgress);
+            const res = await buildPerGridSolutionWorkbooks({
+                puzzles: slice, solutionImages: solImages, solutionsPerPage: answers,
+                batchSize: 0, mode, pageOffset: ps, puzzleNumberOffset
+            });
+            files.push(...res.files);
+        }
+    }
+    return files;
 }
 
 // Handle Canva Bulk Excel Export (with REAL embedded floating images)
@@ -2201,77 +2327,83 @@ async function handleExportCanva() {
         setProgress(2, "Generating full puzzle collection for export...");
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
 
-        setProgress(15, "Rendering puzzle images for Canva Bulk cell embedding...");
-        const { gridImages, solutionImages, calendarImages, pageCalendarImages } = await renderCanvaBulkImages(
-            fullPuzzles,
-            pct => setProgress(15 + Math.round(pct * 0.55), `Embedding images into Canva Excel: ${pct}%...`)
-        );
+        const ws = state.mode === "wordsearch";
+        const ppp = ws ? 1 : state.puzzlesPerPage;
+        const answers = ws ? state.wsSolutionsPerPage : state.solutionsPerPage;
+        const sameExcel = ws ? state.wsSameExcel : state.sameExcel;
+        const imageMode = (ws ? state.wsSolutionImageMode : state.sdkSolutionImageMode) === "per_page" ? "per_page" : "per_grid";
+        const startNumber = ws ? state.wsStartNumber : state.startNumber;
+        // Solutions live inside the puzzle workbook only when "same Excel" is on
+        // AND images are per-grid. Any other combination streams a separate file.
+        const solutionsInMain = sameExcel && imageMode === "per_grid";
+        const separateSolutions = !solutionsInMain;
 
-        const separate = state.mode === "sudoku" ? !state.sameExcel : !state.wsSameExcel;
-        const solutionPageImages = separate
-            ? await renderSolutionPageImages(fullPuzzles, pct => setProgress(52 + Math.round(pct * 0.18), `Rendering answer pages: ${pct}%...`))
-            : [];
-
-        setProgress(72, "Building Canva Bulk Excel workbook with embedded pictures...");
         const totalPuzzles = fullPuzzles.length;
-        const totalPages = Math.ceil(totalPuzzles / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
+        const totalPages = Math.ceil(totalPuzzles / ppp);
+        const batchSize = ws
+            ? (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0)
+            : (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0);
 
         const dateStrings = fullPuzzles.map((_, i) => {
-            const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
-                : i;
+            const dateIdx = (state.dateScope === "per_page") ? Math.floor(i / ppp) : i;
             return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
         });
-
         const pageDateStrings = [];
         if (state.dateEnabled) {
             for (let p = 0; p < totalPages; p++) {
-                const info = getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat);
-                pageDateStrings.push(info.dateStr);
+                pageDateStrings.push(getPuzzleDateInfo(p, state.startDate, state.progression, state.dateFormat).dateStr);
             }
         }
+        const book = activeBook(state);
+        const [trimW, trimH] = TRIM_DIMENSIONS_PT[book.trim];
+        const pageAspect = trimH / trimW;
+
+        setProgress(10, "Rendering puzzle images for Canva Bulk cell embedding...");
+        const imageBatchProvider = (puzStart, puzEnd, pageStart, pageEnd) =>
+            renderImageSlice(fullPuzzles, {
+                puzStart, puzEnd, pageStart, pageEnd,
+                needSolution: solutionsInMain,
+                onProgress: pct => setProgress(10 + Math.round(pct * 0.45), `Embedding images into Canva Excel: ${pct}%...`)
+            });
+
+        const common = {
+            puzzles: fullPuzzles,
+            includeSolutionInSameExcel: solutionsInMain,
+            solutionImageMode: imageMode,
+            skipSeparateSolutions: true,
+            numberOffset: startNumber - 1,
+            dateStrings: state.dateEnabled ? dateStrings : [],
+            hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+            imageBatchProvider,
+            batchSize,
+            pageAspect
+        };
 
         let result;
-        const batchSize = state.mode === "sudoku"
-            ? (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0)
-            : (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0);
-
-        if (state.mode === "sudoku") {
-            result = await buildCanvaSudokuExcel({
-                puzzles: fullPuzzles,
-                puzzlesPerPage: state.puzzlesPerPage,
-                includeSolutionInSameExcel: state.sameExcel,
-                solutionsPerPage: state.solutionsPerPage,
-                dateScope: state.dateScope,
-                dateStrings: state.dateEnabled ? dateStrings : [],
-                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
-                gridImages,
-                solutionImages,
-                solutionPageImages,
-                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
-                calendarImages,
-                pageCalendarImages,
-                batchSize
-            });
+        if (ws) {
+            result = await buildCanvaWordSearchExcel({ ...common, solutionsPerPage: answers });
         } else {
-            result = await buildCanvaWordSearchExcel({
-                puzzles: fullPuzzles,
-                includeSolutionInSameExcel: state.wsSameExcel,
-                solutionsPerPage: state.wsSolutionsPerPage,
-                dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
-                gridImages,
-                solutionImages,
-                solutionPageImages,
-                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
-                calendarImages,
-                batchSize
+            result = await buildCanvaSudokuExcel({
+                ...common,
+                puzzlesPerPage: ppp,
+                solutionsPerPage: answers,
+                dateScope: state.dateScope,
+                pageDateStrings: state.dateEnabled ? pageDateStrings : []
             });
         }
 
+        if (separateSolutions) {
+            setProgress(58, "Rendering answer pages for the solution workbook...");
+            const solFiles = await buildSeparateSolutionFiles(fullPuzzles, {
+                imageMode, answers, batchSize, startNumber, mode: state.mode, pageAspect,
+                onProgress: pct => setProgress(58 + Math.round(pct * 0.3), `Rendering answer pages: ${pct}%...`)
+            });
+            result.files.push(...solFiles);
+            result.isSplit = result.files.length > 1;
+        }
+
+        setProgress(90, "Packaging Canva Bulk workbook files...");
         if (result.isSplit && result.files.length > 1) {
-            setProgress(90, `Packaging ${result.files.length} Canva batch files into ZIP...`);
             const zip = new window.JSZip();
             result.files.forEach(f => {
                 zip.file(f.filename, f.buffer);
@@ -2303,7 +2435,7 @@ async function handleExportCanva() {
         setTimeout(() => setProgress(null), 1000);
     } catch (err) {
         setProgress(null);
-        alert(`Export failed: ${err.message}`);
+        showToast(`Export failed: ${err.message}`);
     }
 }
 
@@ -2314,24 +2446,34 @@ async function handleExportSolutions() {
     try {
         setProgress(5, "Generating full puzzle collection for solutions export...");
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
-        setProgress(40, "Rendering complete answer pages...");
-        const pageImages = await renderSolutionPageImages(fullPuzzles,
-            pct => setProgress(40 + Math.round(pct * 0.4), `Rendering answer pages: ${pct}%...`));
-        setProgress(82, "Embedding answer-page images into Excel...");
-        const result = await buildSolutionPageWorkbooks(solutionWorkbookOptions(fullPuzzles,pageImages));
-        if (result.files.length === 1) {
-            saveAs(new Blob([result.files[0].buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
-                result.files[0].filename);
+        const wsS = state.mode === "wordsearch";
+        const answers = wsS ? state.wsSolutionsPerPage : state.solutionsPerPage;
+        const imageMode = (wsS ? state.wsSolutionImageMode : state.sdkSolutionImageMode) === "per_page" ? "per_page" : "per_grid";
+        const startNumber = wsS ? state.wsStartNumber : state.startNumber;
+        const batchSize = wsS
+            ? (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0)
+            : (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0);
+        const bookS = activeBook(state);
+        const pageAspectS = TRIM_DIMENSIONS_PT[bookS.trim][1] / TRIM_DIMENSIONS_PT[bookS.trim][0];
+
+        setProgress(20, "Rendering answer pages...");
+        const files = await buildSeparateSolutionFiles(fullPuzzles, {
+            imageMode, answers, batchSize, startNumber, mode: state.mode, pageAspect: pageAspectS,
+            onProgress: pct => setProgress(20 + Math.round(pct * 0.65), `Rendering answer pages: ${pct}%...`)
+        });
+        if (files.length === 1) {
+            saveAs(new Blob([files[0].buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
+                files[0].filename);
         } else {
             const zip = new window.JSZip();
-            result.files.forEach(file => zip.file(file.filename,file.buffer));
+            files.forEach(file => zip.file(file.filename,file.buffer));
             const blob = await zip.generateAsync({type:'blob',compression:'DEFLATE'});
             saveAs(blob, `${state.mode}_solution_pages.zip`);
         }
         setTimeout(() => setProgress(null), 1000);
     } catch (err) {
         setProgress(null);
-        alert(`Export failed: ${err.message}`);
+        showToast(`Export failed: ${err.message}`);
     }
 }
 
@@ -2432,7 +2574,7 @@ async function handleExportPdf() {
         setTimeout(() => setProgress(null), 1000);
     } catch (err) {
         setProgress(null);
-        alert(`PDF export failed: ${err.message}`);
+        showToast(`PDF export failed: ${err.message}`);
     }
 }
 
@@ -2441,7 +2583,7 @@ async function handleExportZip() {
     updateWorkflow(state);
     if (state.isExporting || state.exportBlocked) return;
     if (typeof window.JSZip === "undefined") {
-        alert("JSZip library not loaded.");
+        showToast("JSZip library not loaded. Reload the page and retry.");
         return;
     }
 
@@ -2457,12 +2599,19 @@ async function handleExportZip() {
         setProgress(15, `Rendering 300 DPI high-resolution puzzle images: 0 / ${total}`);
 
         const canvasToBlob = (canvas) => new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+        const blobToDataUrl = (blob) => new Promise(resolve => {
+            if (!blob) return resolve("");
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => resolve("");
+            fr.readAsDataURL(blob);
+        });
 
-        const gridImages = [];
-        const solutionImages = [];
-        const calendarImages = [];
-        const pageCalendarImages = [];
         const pageDateStrings = [];
+        const gridBlobs = new Array(total);
+        const solBlobs = new Array(total);
+        const calBlobs = new Array(total);
+        const pageCalBlobs = new Array(totalPages);
 
         // Pre-render page calendar cards if 1 date per page is selected
         if (state.dateEnabled) {
@@ -2480,11 +2629,11 @@ async function handleExportZip() {
                         showCardBorder: state.calBorder,
                         showYear: state.calShowYear
                     });
-                    pageCalendarImages.push(calCnv.toDataURL("image/png"));
+                    pageCalBlobs[p] = await canvasToBlob(calCnv);
+                    calCnv.width = 1; calCnv.height = 1;
 
                     if (state.dateScope === "per_page") {
-                        const calBlob = await canvasToBlob(calCnv);
-                        imgFolder.file(`page_${String(p + 1).padStart(3, "0")}_calendar.png`, calBlob);
+                        imgFolder.file(`page_${String(p + 1).padStart(3, "0")}_calendar.png`, pageCalBlobs[p]);
                     }
                 }
             }
@@ -2495,7 +2644,6 @@ async function handleExportZip() {
             const pPad = String(i + 1).padStart(3, "0");
 
             let dTxt = null;
-            let calCnv = null;
 
             if (state.dateEnabled) {
                 const dateIdx = (state.dateScope === "per_page")
@@ -2504,8 +2652,8 @@ async function handleExportZip() {
                 const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
                 dTxt = info.dateStr;
 
-                if (state.dateMode === "calendar_image" && state.dateScope === "per_game") {
-                    calCnv = renderMiniMonthCalendarCanvas({
+                if (state.dateMode === "calendar_image") {
+                    const calCnv = renderMiniMonthCalendarCanvas({
                         year: info.year,
                         month: info.month,
                         highlightDay: info.highlightDay,
@@ -2515,8 +2663,11 @@ async function handleExportZip() {
                         showYear: state.calShowYear
                     });
                     const calBlob = await canvasToBlob(calCnv);
-                    imgFolder.file(`puzzle_${pPad}_calendar.png`, calBlob);
-                    calendarImages.push(calCnv.toDataURL("image/png"));
+                    calCnv.width = 1; calCnv.height = 1;
+                    calBlobs[i] = calBlob;
+                    if (state.dateScope === "per_game") {
+                        imgFolder.file(`puzzle_${pPad}_calendar.png`, calBlob);
+                    }
                 }
             }
 
@@ -2533,9 +2684,9 @@ async function handleExportZip() {
                     solution: false,
                     dateText: dTxt
                 });
-                const gridBlob = await canvasToBlob(gridCnv);
-                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlob);
-                gridImages.push(gridCnv.toDataURL("image/png"));
+                gridBlobs[i] = await canvasToBlob(gridCnv);
+                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlobs[i]);
+                gridCnv.width = 1; gridCnv.height = 1;
 
                 // Sudoku Solution Image (300 DPI)
                 solCnv = renderSudokuGridCanvas({
@@ -2545,9 +2696,9 @@ async function handleExportZip() {
                     dpi: 300,
                     solution: true
                 });
-                const solBlob = await canvasToBlob(solCnv);
-                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlob);
-                solutionImages.push(solCnv.toDataURL("image/png"));
+                solBlobs[i] = await canvasToBlob(solCnv);
+                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlobs[i]);
+                solCnv.width = 1; solCnv.height = 1;
 
             } else {
                 // Word Search Grid Image (300 DPI)
@@ -2560,9 +2711,9 @@ async function handleExportZip() {
                     dateText: dTxt,
                     showGridLines: true
                 });
-                const gridBlob = await canvasToBlob(gridCnv);
-                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlob);
-                gridImages.push(gridCnv.toDataURL("image/png"));
+                gridBlobs[i] = await canvasToBlob(gridCnv);
+                imgFolder.file(`puzzle_${pPad}_grid.png`, gridBlobs[i]);
+                gridCnv.width = 1; gridCnv.height = 1;
 
                 // Word Search Solution Image (300 DPI)
                 solCnv = renderWordSearchGridCanvas({
@@ -2573,9 +2724,9 @@ async function handleExportZip() {
                     solution: true,
                     showGridLines: true
                 });
-                const solBlob = await canvasToBlob(solCnv);
-                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlob);
-                solutionImages.push(solCnv.toDataURL("image/png"));
+                solBlobs[i] = await canvasToBlob(solCnv);
+                imgFolder.file(`puzzle_${pPad}_solution.png`, solBlobs[i]);
+                solCnv.width = 1; solCnv.height = 1;
             }
 
             if (i % 5 === 0 || i === total - 1) {
@@ -2587,14 +2738,17 @@ async function handleExportZip() {
 
         // Add Canva Excel with embedded pictures and complete answer-page images.
         setProgress(72, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
-        const solutionPageImages = (state.mode === "sudoku" ? !state.sameExcel : !state.wsSameExcel)
-            ? await renderSolutionPageImages(fullPuzzles,
-                pct => setProgress(72 + Math.round(pct * 0.06), `Rendering answer pages: ${pct}%...`))
-            : [];
+        const wsMode = state.mode === "wordsearch";
+        const pppZ = wsMode ? 1 : state.puzzlesPerPage;
+        const answersZ = wsMode ? state.wsSolutionsPerPage : state.solutionsPerPage;
+        const sameExcelZ = wsMode ? state.wsSameExcel : state.sameExcel;
+        const imageModeZ = (wsMode ? state.wsSolutionImageMode : state.sdkSolutionImageMode) === "per_page" ? "per_page" : "per_grid";
+        const startNumberZ = wsMode ? state.wsStartNumber : state.startNumber;
+        const solutionsInMainZ = sameExcelZ && imageModeZ === "per_grid";
+        const separateSolutionsZ = !solutionsInMainZ;
+
         const dateStrings = fullPuzzles.map((_, i) => {
-            const dateIdx = (state.dateScope === "per_page")
-                ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
-                : i;
+            const dateIdx = (state.dateScope === "per_page") ? Math.floor(i / pppZ) : i;
             return state.dateEnabled ? getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat).dateStr : "";
         });
 
@@ -2602,74 +2756,82 @@ async function handleExportZip() {
             ? (state.canvaBatchSize && state.canvaBatchSize > 0 ? state.canvaBatchSize : 0)
             : (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0 ? state.wsCanvaBatchSize : 0);
 
-        if (state.mode === "sudoku") {
-            const canvaResult = await buildCanvaSudokuExcel({
-                puzzles: fullPuzzles,
-                puzzlesPerPage: state.puzzlesPerPage,
-                includeSolutionInSameExcel: state.sameExcel,
-                solutionsPerPage: state.solutionsPerPage,
+        const bookZ = activeBook(state);
+        const pageAspectZ = TRIM_DIMENSIONS_PT[bookZ.trim][1] / TRIM_DIMENSIONS_PT[bookZ.trim][0];
+
+        // Decode base64 only for the images one batch needs; the rest of the
+        // book stays in compact PNG blob form inside the ZIP.
+        const zipImageBatchProvider = async (puzStart, puzEnd, pageStart, pageEnd) => {
+            const gridImages = new Array(total);
+            const solutionImages = new Array(total);
+            const calendarImages = new Array(total);
+            const pageCalendarImages = new Array(totalPages);
+            for (let i = puzStart; i < puzEnd; i++) {
+                gridImages[i] = await blobToDataUrl(gridBlobs[i]);
+                if (solutionsInMainZ && solBlobs[i]) solutionImages[i] = await blobToDataUrl(solBlobs[i]);
+                if (calBlobs[i]) calendarImages[i] = await blobToDataUrl(calBlobs[i]);
+            }
+            for (let p = pageStart; p < pageEnd; p++) {
+                if (pageCalBlobs[p]) pageCalendarImages[p] = await blobToDataUrl(pageCalBlobs[p]);
+            }
+            return { gridImages, solutionImages, calendarImages, pageCalendarImages };
+        };
+
+        const canvaCommon = {
+            puzzles: fullPuzzles,
+            includeSolutionInSameExcel: solutionsInMainZ,
+            solutionImageMode: imageModeZ,
+            skipSeparateSolutions: true,
+            numberOffset: startNumberZ - 1,
+            dateStrings: state.dateEnabled ? dateStrings : [],
+            hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
+            imageBatchProvider: zipImageBatchProvider,
+            batchSize,
+            pageAspect: pageAspectZ
+        };
+
+        const canvaResult = wsMode
+            ? await buildCanvaWordSearchExcel({ ...canvaCommon, solutionsPerPage: answersZ })
+            : await buildCanvaSudokuExcel({
+                ...canvaCommon,
+                puzzlesPerPage: pppZ,
+                solutionsPerPage: answersZ,
                 dateScope: state.dateScope,
-                dateStrings: state.dateEnabled ? dateStrings : [],
-                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
-                gridImages,
-                solutionImages,
-                solutionPageImages,
-                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
-                calendarImages,
-                pageCalendarImages,
-                batchSize
+                pageDateStrings: state.dateEnabled ? pageDateStrings : []
             });
 
-            if (canvaResult.isSplit && canvaResult.files.length > 1) {
-                const canvaFolder = zip.folder("canva_batches");
-                canvaResult.files.forEach(f => {
-                    canvaFolder.file(f.filename, f.buffer);
-                });
-                const instructions = generateCanvaInstructions({
-                    mode: "sudoku",
-                    totalPages: canvaResult.totalPages,
-                    batchSize: batchSize || 100,
-                    numBatches: canvaResult.totalBatches,
-                    puzzlesPerPage: state.puzzlesPerPage
-                });
-                canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
-            } else {
-                zip.file("sudoku_canva_bulk.xlsx", canvaResult.files[0].buffer);
-            }
+        if (separateSolutionsZ) {
+            const solFiles = await buildSeparateSolutionFiles(fullPuzzles, {
+                imageMode: imageModeZ, answers: answersZ, batchSize,
+                startNumber: startNumberZ, mode: state.mode, pageAspect: pageAspectZ,
+                solutionGridProvider: imageModeZ === "per_grid"
+                    ? async (a, b) => {
+                        const out = [];
+                        for (let i = a; i < b; i++) out.push(await blobToDataUrl(solBlobs[i]));
+                        return out;
+                    }
+                    : null,
+                onProgress: pct => setProgress(72 + Math.round(pct * 0.06), `Rendering answer pages: ${pct}%...`)
+            });
+            canvaResult.files.push(...solFiles);
+            canvaResult.isSplit = canvaResult.files.length > 1;
+        }
 
+        if (canvaResult.files.length > 1) {
+            const canvaFolder = zip.folder("canva_batches");
+            canvaResult.files.forEach(f => {
+                canvaFolder.file(f.filename, f.buffer);
+            });
+            const instructions = generateCanvaInstructions({
+                mode: state.mode,
+                totalPages: canvaResult.totalPages,
+                batchSize: batchSize || 100,
+                numBatches: canvaResult.totalBatches,
+                puzzlesPerPage: wsMode ? 1 : state.puzzlesPerPage
+            });
+            canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
         } else {
-            const canvaResult = await buildCanvaWordSearchExcel({
-                puzzles: fullPuzzles,
-                includeSolutionInSameExcel: state.wsSameExcel,
-                solutionsPerPage: state.wsSolutionsPerPage,
-                dateStrings: state.dateEnabled ? dateStrings : [],
-                hasCalendarImages: state.dateEnabled && state.dateMode === "calendar_image",
-                gridImages,
-                solutionImages,
-                solutionPageImages,
-                pageAspect: solutionWorkbookOptions(fullPuzzles,solutionPageImages).pageAspect,
-                calendarImages,
-                batchSize
-            });
-
-            if (canvaResult.isSplit && canvaResult.files.length > 1) {
-                const canvaFolder = zip.folder("canva_batches");
-                canvaResult.files.forEach(f => {
-                    canvaFolder.file(f.filename, f.buffer);
-                });
-                const instructions = generateCanvaInstructions({
-                    mode: "wordsearch",
-                    totalPages: canvaResult.totalPages,
-                    batchSize: batchSize || 100,
-                    numBatches: canvaResult.totalBatches,
-                    puzzlesPerPage: 1
-                });
-                canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
-            } else {
-                zip.file("wordsearch_canva_bulk.xlsx", canvaResult.files[0].buffer);
-            }
-
+            zip.file(canvaResult.files[0].filename, canvaResult.files[0].buffer);
         }
 
         // Generate final ZIP
@@ -2687,7 +2849,7 @@ async function handleExportZip() {
         setProgress(null);
     } catch (err) {
         setProgress(null);
-        alert(`ZIP generation failed: ${err.message}`);
+        showToast(`ZIP generation failed: ${err.message}`);
     }
 }
 

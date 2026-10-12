@@ -447,6 +447,16 @@ input:checked + .slider-switch:before {
     transform: translateX(20px);
 }
 
+.switch input:focus-visible + .slider-switch {
+    outline: 2px solid var(--primary-600, #1f7a5a);
+    outline-offset: 2px;
+}
+
+.switch input:disabled + .slider-switch {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Preset Pill Buttons */
 .preset-pills {
     display: flex;
@@ -838,6 +848,12 @@ input:checked + .slider-switch:before {
     background: var(--bg-subtle);
 }
 
+.file-drop-area:focus-visible {
+    outline: 2px solid var(--primary-600, #1f7a5a);
+    outline-offset: 2px;
+    border-color: var(--primary-500);
+}
+
 .file-drop-icon {
     font-size: 1.6rem;
     margin-bottom: 4px;
@@ -943,5 +959,63 @@ input:checked + .slider-switch:before {
     max-height: 140px;
     overflow-y: auto;
     color: var(--text-primary);
+}
+
+/* Toast notifications */
+.toast-host {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(420px, calc(100vw - 36px));
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    box-shadow: 0 8px 24px rgba(15, 35, 28, 0.18);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: auto;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-error { border-left: 4px solid #c0392b; }
+.toast-success { border-left: 4px solid var(--primary-600, #1f7a5a); }
+.toast-info { border-left: 4px solid var(--primary-500, #2f8f6b); }
+
+.toast-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.toast-close:hover { color: var(--text-primary); }
+
+.toast-close:focus-visible {
+    outline: 2px solid var(--primary-600, #1f7a5a);
+    outline-offset: 2px;
 }
 

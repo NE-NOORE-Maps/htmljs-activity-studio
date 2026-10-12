@@ -13,7 +13,8 @@
 // embedded-picture export while preserving multi-solution page composition.
 export async function buildSolutionPageWorkbooks({
     puzzles = [], solutionPageImages = [], solutionsPerPage = 4,
-    batchSize = 100, mode = 'wordsearch', pageAspect = 11 / 8.5
+    batchSize = 100, mode = 'wordsearch', pageAspect = 11 / 8.5,
+    pageOffset = 0, puzzleNumberOffset = 0
 } = {}) {
     if (!window.ExcelJS?.Workbook) throw new Error('Image embedding library unavailable. Reload and retry.');
     if (!Number.isInteger(solutionsPerPage) || solutionsPerPage < 1 || solutionsPerPage > 9)
@@ -37,35 +38,49 @@ export async function buildSolutionPageWorkbooks({
         sheet.views = [{state:'frozen',ySplit:1}];
         for (let page = start; page < end; page++) {
             const first = page * solutionsPerPage;
-            const numbers = puzzles.slice(first, first + solutionsPerPage).map((_,i)=>first+i+1);
-            const row = sheet.addRow({page_number:page+1,puzzle_numbers:numbers.join(', '),solution_count:numbers.length});
+            const numbers = puzzles.slice(first, first + solutionsPerPage).map((_,i)=>first+i+1+puzzleNumberOffset);
+            const row = sheet.addRow({page_number:page+1+pageOffset,puzzle_numbers:numbers.join(', '),solution_count:numbers.length});
             row.height = 180;
             const image = wb.addImage({base64:cleanBase64(solutionPageImages[page]),extension:'png'});
             sheet.addImage(image,{tl:{col:3.08,row:page-start+1.05},
                 ext:{width:140,height:Math.min(220,140*pageAspect)},editAs:'oneCell'});
         }
-        files.push({filename:`${mode}_solution_pages_${start+1}-${end}.xlsx`,
-            buffer:await wb.xlsx.writeBuffer(),pageStart:start+1,pageEnd:end,rowCount:end-start});
+        files.push({filename:`${mode}_solution_pages_${pageOffset+start+1}-${pageOffset+end}.xlsx`,
+            buffer:await wb.xlsx.writeBuffer(),pageStart:pageOffset+start+1,pageEnd:pageOffset+end,rowCount:end-start});
     }
     return {files,isSplit:files.length>1,totalBatches:files.length,totalPages};
 }
 
 // A row represents one answer page; each slot contains its own embedded PNG.
+// solutionImageMode: 'per_grid' (one PNG per solution) or 'per_page' (one
+// composed PNG per answer page, using Answers per page).
 async function appendSeparateSolutions(result, options, mode) {
-    if (options.includeSolutionInSameExcel !== false) return result;
-    if (options.solutionPageImages?.length) {
-        const pages = await buildSolutionPageWorkbooks({...options,mode});
-        result.files.push(...pages.files);
-        result.isSplit = result.files.length > 1;
-        return result;
-    }
-    const { puzzles = [], solutionImages = [], solutionsPerPage = 4, batchSize = 100 } = options;
+    if (options.skipSeparateSolutions) return result;
+    const imageMode = options.solutionImageMode === 'per_page' ? 'per_page' : 'per_grid';
+    if (imageMode === 'per_grid' && options.includeSolutionInSameExcel !== false) return result;
+    const pages = imageMode === 'per_page'
+        ? await buildSolutionPageWorkbooks({ ...options, mode })
+        : await buildPerGridSolutionWorkbooks({ ...options, mode });
+    result.files.push(...pages.files);
+    result.isSplit = result.files.length > 1;
+    return result;
+}
+
+// Per-grid ("img by img") solution workbook: one row per answer page, each slot
+// holding its own embedded solution PNG. Used when the user picks one-image-per-grid.
+export async function buildPerGridSolutionWorkbooks({
+    puzzles = [], solutionImages = [], solutionsPerPage = 4,
+    batchSize = 100, mode = 'wordsearch',
+    pageOffset = 0, puzzleNumberOffset = 0
+} = {}) {
+    if (!window.ExcelJS?.Workbook) throw new Error('Image embedding library unavailable. Reload and retry.');
     if (!Number.isInteger(solutionsPerPage) || solutionsPerPage < 1 || solutionsPerPage > 9)
         throw new Error("Choose between 1 and 9 answers per page.");
     if (solutionImages.length !== puzzles.length || solutionImages.some(image => !image))
         throw new Error("Solution images are missing. Retry the export to embed every answer.");
     const totalPages = Math.ceil(puzzles.length / solutionsPerPage);
     const size = batchSize > 0 ? batchSize : totalPages;
+    const files = [];
     for (let start = 0; start < totalPages; start += size) {
         const end = Math.min(start + size, totalPages);
         const wb = new window.ExcelJS.Workbook();
@@ -79,12 +94,13 @@ async function appendSeparateSolutions(result, options, mode) {
         ws.getRow(1).font = {bold:true};
         ws.views = [{state:"frozen",ySplit:1}];
         for (let page = start; page < end; page++) {
-            const data = {page_number:page+1};
+            const data = {page_number:page+1+pageOffset};
             for (let slot=0; slot<solutionsPerPage; slot++) {
                 const index=page*solutionsPerPage+slot;
                 if (index>=puzzles.length) break;
-                data[`solution_${slot+1}_number`]=index+1;
-                data[`solution_${slot+1}_title`]=puzzles[index].title || `Puzzle ${index+1}`;
+                const num=index+1+puzzleNumberOffset;
+                data[`solution_${slot+1}_number`]=num;
+                data[`solution_${slot+1}_title`]=puzzles[index].title || `Puzzle ${num}`;
             }
             ws.addRow(data).height=150;
             for (let slot=0; slot<solutionsPerPage; slot++) {
@@ -94,11 +110,10 @@ async function appendSeparateSolutions(result, options, mode) {
                 ws.addImage(image,{tl:{col:3+slot*3+0.08,row:page-start+1.05},ext:{width:140,height:140},editAs:"oneCell"});
             }
         }
-        result.files.push({filename:`${mode}_solutions_pages_${start+1}-${end}.xlsx`,
-            buffer:await wb.xlsx.writeBuffer(),pageStart:start+1,pageEnd:end,rowCount:end-start});
+        files.push({filename:`${mode}_solutions_pages_${start+1+pageOffset}-${end+pageOffset}.xlsx`,
+            buffer:await wb.xlsx.writeBuffer(),pageStart:start+1+pageOffset,pageEnd:end+pageOffset,rowCount:end-start});
     }
-    result.isSplit=result.files.length>1;
-    return result;
+    return {files,isSplit:files.length>1,totalBatches:files.length,totalPages};
 }
 
 function cleanBase64(dataUrl) {
@@ -178,8 +193,8 @@ Generated by KDP Activity Studio
 }
 
 export async function buildCanvaSudokuExcel(options = {}) {
-    const { gridImages = [] } = options;
-    if (typeof window.ExcelJS !== "undefined" && gridImages && gridImages.length > 0) {
+    const { gridImages = [], imageBatchProvider = null } = options;
+    if (typeof window.ExcelJS !== "undefined" && (imageBatchProvider || (gridImages && gridImages.length > 0))) {
         return await appendSeparateSolutions(await buildCanvaSudokuExcelJS(options), options, "sudoku");
     }
     if (gridImages.length) throw new Error("Image embedding library unavailable. Reload and retry the export.");
@@ -193,7 +208,8 @@ async function buildCanvaSudokuExcelJS(options = {}) {
     const {
         puzzles = [],
         puzzlesPerPage = 1,
-        batchSize = 100
+        batchSize = 100,
+        imageBatchProvider = null
     } = options;
 
     const totalPuzzles = puzzles.length;
@@ -207,8 +223,14 @@ async function buildCanvaSudokuExcelJS(options = {}) {
     for (let b = 0; b < numBatches; b++) {
         const startPage = b * effectiveBatchSize;
         const endPage = Math.min(totalPages, (b + 1) * effectiveBatchSize);
+        let batchImageOpts = options;
+        if (imageBatchProvider) {
+            const puzStart = startPage * puzzlesPerPage;
+            const puzEnd = Math.min(totalPuzzles, endPage * puzzlesPerPage);
+            batchImageOpts = { ...options, ...(await imageBatchProvider(puzStart, puzEnd, startPage, endPage)) };
+        }
         const wb = createSingleSudokuBatchExcelJS({
-            ...options,
+            ...batchImageOpts,
             startPage,
             endPage,
             totalPages
@@ -251,7 +273,8 @@ function createSingleSudokuBatchExcelJS({
     pageCalendarImages = [],
     startPage = 0,
     endPage = 0,
-    totalPages = 0
+    totalPages = 0,
+    numberOffset = 0
 } = {}) {
     const wb = new window.ExcelJS.Workbook();
     const ws = wb.addWorksheet("Bulk Create");
@@ -305,7 +328,7 @@ function createSingleSudokuBatchExcelJS({
 
         for (let i = startPage; i < endPage; i++) {
             const p = puzzles[i];
-            const pNum = i + 1;
+            const pNum = i + 1 + numberOffset;
             const rowNumber = (i - startPage) + 2;
 
             const rowData = {
@@ -776,8 +799,8 @@ export function buildSolutionsOnlyExcel({
 }
 
 export async function buildCanvaWordSearchExcel(options = {}) {
-    const { gridImages = [] } = options;
-    if (typeof window.ExcelJS !== "undefined" && gridImages && gridImages.length > 0) {
+    const { gridImages = [], imageBatchProvider = null } = options;
+    if (typeof window.ExcelJS !== "undefined" && (imageBatchProvider || (gridImages && gridImages.length > 0))) {
         return await appendSeparateSolutions(await buildCanvaWordSearchExcelJS(options), options, "wordsearch");
     }
     if (gridImages.length) throw new Error("Image embedding library unavailable. Reload and retry the export.");
@@ -790,7 +813,8 @@ export async function buildCanvaWordSearchExcel(options = {}) {
 async function buildCanvaWordSearchExcelJS(options = {}) {
     const {
         puzzles = [],
-        batchSize = 100
+        batchSize = 100,
+        imageBatchProvider = null
     } = options;
 
     const totalPages = puzzles.length;
@@ -803,8 +827,12 @@ async function buildCanvaWordSearchExcelJS(options = {}) {
     for (let b = 0; b < numBatches; b++) {
         const startPage = b * effectiveBatchSize;
         const endPage = Math.min(totalPages, (b + 1) * effectiveBatchSize);
+        let batchImageOpts = options;
+        if (imageBatchProvider) {
+            batchImageOpts = { ...options, ...(await imageBatchProvider(startPage, endPage, startPage, endPage)) };
+        }
         const wb = createSingleWordSearchBatchExcelJS({
-            ...options,
+            ...batchImageOpts,
             startPage,
             endPage,
             totalPages
@@ -843,7 +871,8 @@ function createSingleWordSearchBatchExcelJS({
     calendarImages = [],
     startPage = 0,
     endPage = 0,
-    totalPages = 0
+    totalPages = 0,
+    numberOffset = 0
 } = {}) {
     const wb = new window.ExcelJS.Workbook();
     const ws = wb.addWorksheet("Bulk Create");
@@ -901,7 +930,7 @@ function createSingleWordSearchBatchExcelJS({
 
     for (let i = startPage; i < endPage; i++) {
         const p = puzzles[i];
-        const pNum = i + 1;
+        const pNum = i + 1 + numberOffset;
         const rowNumber = (i - startPage) + 2;
 
         const rowData = {
