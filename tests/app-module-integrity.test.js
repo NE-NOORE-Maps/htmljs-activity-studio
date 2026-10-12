@@ -186,5 +186,119 @@ test('All puzzle presets and solution markers are strictly Black & White with li
     }
 });
 
+test('Studio work and settings persist across browser refresh and tolerate blocked localStorage', async () => {
+    const {
+        STUDIO_STORAGE_KEY,
+        saveStudioState,
+        loadStudioState,
+        serializeStudioState,
+        applySavedStudioState
+    } = await import('../js/workflow.js');
+
+    const prevLocalStorage = globalThis.localStorage;
+    const store = new Map();
+    globalThis.localStorage = {
+        getItem: (k) => (store.has(k) ? store.get(k) : null),
+        setItem: (k, v) => { store.set(k, String(v)); }
+    };
+
+    try {
+        const workingState = {
+            mode: 'wordsearch',
+            step: 2,
+            bookTitles: { wordsearch: 'My Custom Word Search Book', sudoku: 'My Sudoku Book' },
+            titlePages: { wordsearch: false, sudoku: true },
+            wsSource: 'csv',
+            wsCsvMode: 'themed',
+            wsCsvFileName: 'animals_themes.csv',
+            wsCsvContent: 'theme,word\nJungle,TIGER\nJungle,MONKEY\nOcean,SHARK\nOcean,WHALE',
+            wsRawText: 'CUSTOM\nWORDS\nLIST',
+            wsThemeInput: 'Safari',
+            wsWordsPerPage: 15,
+            wsPuzzlesPerPage: 2,
+            wsSameExcel: false,
+            wsSolutionsPerPage: 9,
+            wsSeparateSolutionsPerPage: 9,
+            wsActivePreset: 'kids_fun',
+            wsActiveStyle: { letterFont: 'Fredoka', fontScale: 72, gridLineColor: '#000000', letterColor: '#000000' },
+            dateEnabled: true,
+            dateMode: 'calendar_image',
+            dateScope: 'per_page',
+            // Transient runtime fields that must NOT be persisted
+            puzzles: [{ id: 1 }],
+            builtPuzzlesCache: [{ id: 1 }],
+            builtPuzzlesHash: 'hash123',
+            isExporting: true
+        };
+
+        assert.equal(saveStudioState(workingState), true);
+        assert.ok(store.has(STUDIO_STORAGE_KEY), 'Expected studio state to be saved under STUDIO_STORAGE_KEY');
+
+        const rawSaved = store.get(STUDIO_STORAGE_KEY);
+        const parsedSaved = JSON.parse(rawSaved);
+        assert.equal(parsedSaved.puzzles, undefined, 'Transient puzzles array should not be saved to localStorage');
+        assert.equal(parsedSaved.builtPuzzlesCache, undefined, 'Transient cache should not be saved to localStorage');
+        assert.equal(parsedSaved.isExporting, undefined, 'Transient export flag should not be saved to localStorage');
+
+        // Simulate fresh page reload with default state
+        const freshReloadState = {
+            mode: 'wordsearch',
+            step: 0,
+            bookTitles: { wordsearch: 'The Word Search Collection', sudoku: 'The Sudoku Collection' },
+            titlePages: { wordsearch: true, sudoku: true },
+            wsSource: 'paste',
+            wsCsvMode: 'auto',
+            wsCsvFileName: null,
+            wsCsvContent: null,
+            wsRawText: 'DEFAULT',
+            wsThemeInput: 'Animals',
+            wsWordsPerPage: 12,
+            wsPuzzlesPerPage: 1,
+            wsSameExcel: true,
+            wsSolutionsPerPage: 1,
+            wsSeparateSolutionsPerPage: 4,
+            wsActivePreset: 'adult_classic',
+            wsActiveStyle: { letterFont: 'Plus Jakarta Sans', fontScale: 62, cellStyle: 'square' },
+            dateEnabled: false,
+            dateMode: 'text',
+            dateScope: 'per_game'
+        };
+
+        assert.equal(loadStudioState(freshReloadState), true);
+        assert.equal(freshReloadState.step, 2);
+        assert.equal(freshReloadState.bookTitles.wordsearch, 'My Custom Word Search Book');
+        assert.equal(freshReloadState.titlePages.wordsearch, false);
+        assert.equal(freshReloadState.wsSource, 'csv');
+        assert.equal(freshReloadState.wsCsvMode, 'themed');
+        assert.equal(freshReloadState.wsCsvFileName, 'animals_themes.csv');
+        assert.equal(freshReloadState.wsCsvContent, workingState.wsCsvContent);
+        assert.equal(freshReloadState.wsRawText, 'CUSTOM\nWORDS\nLIST');
+        assert.equal(freshReloadState.wsWordsPerPage, 15);
+        assert.equal(freshReloadState.wsPuzzlesPerPage, 2);
+        assert.equal(freshReloadState.wsSameExcel, false);
+        assert.equal(freshReloadState.wsSolutionsPerPage, 9);
+        assert.equal(freshReloadState.wsSeparateSolutionsPerPage, 9);
+        assert.equal(freshReloadState.wsActivePreset, 'kids_fun');
+        assert.equal(freshReloadState.wsActiveStyle.letterFont, 'Fredoka');
+        assert.equal(freshReloadState.wsActiveStyle.cellStyle, 'square', 'Merged style object preserves default keys');
+        assert.equal(freshReloadState.dateEnabled, true);
+        assert.equal(freshReloadState.dateMode, 'calendar_image');
+        assert.equal(freshReloadState.dateScope, 'per_page');
+
+        // Verify blocked localStorage is tolerated gracefully
+        globalThis.localStorage = {
+            getItem: () => { throw new Error('Storage blocked'); },
+            setItem: () => { throw new Error('Storage blocked'); }
+        };
+        assert.equal(saveStudioState(workingState), false);
+        assert.equal(loadStudioState(freshReloadState), false);
+        assert.ok(serializeStudioState(workingState).includes('My Custom Word Search Book'));
+        assert.equal(applySavedStudioState(freshReloadState, 'invalid-json{{{'), false);
+    } finally {
+        globalThis.localStorage = prevLocalStorage;
+    }
+});
+
+
 
 

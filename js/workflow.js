@@ -1,12 +1,151 @@
-import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro11';
+import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro12';
 
 const steps = ['tab-volume','tab-rules','tab-styling','tab-review'];
 const names = ['Words import','Words settings','Solution settings','Export'];
 let currentStep = 0;
+let activeStateRef = null;
 const el = id => document.getElementById(id);
+
+export const STUDIO_STORAGE_KEY = 'kdp_studio_work_v1';
+
+export const PERSISTED_STATE_KEYS = [
+    'mode',
+    'step',
+    'bookTitles',
+    'titlePages',
+    'viewMode',
+    'currentPage',
+    'previewScale',
+    'puzzleCount',
+    'startNumber',
+    'puzzlesPerPage',
+    'solutionsPerPage',
+    'sdkSeparateSolutionsPerPage',
+    'trimChoice',
+    'sameExcel',
+    'sdkSolutionImageMode',
+    'includeInstructions',
+    'canvaBatchSize',
+    'wsPuzzleCount',
+    'wsStartNumber',
+    'wsTargetCountEnforced',
+    'wsPuzzlesPerPage',
+    'wsSolutionsPerPage',
+    'wsSeparateSolutionsPerPage',
+    'wsTrimChoice',
+    'wsSameExcel',
+    'wsSolutionImageMode',
+    'wsShowWordBank',
+    'wsWordCols',
+    'wsCanvaBatchSize',
+    'dateEnabled',
+    'dateMode',
+    'dateScope',
+    'selectedYear',
+    'startDate',
+    'progression',
+    'dateFormat',
+    'calTheme',
+    'calBorder',
+    'calSunday',
+    'calShowYear',
+    'sdkActivePreset',
+    'activeStyle',
+    'wsActivePreset',
+    'wsActiveStyle',
+    'sudokuType',
+    'difficulty',
+    'seed',
+    'symmetric',
+    'wordokuWord',
+    'titleTemplate',
+    'wsLanguage',
+    'wsAccentMode',
+    'wsSource',
+    'wsCsvMode',
+    'wsThemeInput',
+    'wsSeed',
+    'wsRawText',
+    'wsCsvContent',
+    'wsCsvFileName',
+    'wsGridChoice',
+    'wsRows',
+    'wsCols',
+    'wsWordsPerPage',
+    'wsDifficulty',
+    'wsTitleTemplate'
+];
+
+export function serializeStudioState(state) {
+    if (!state || typeof state !== 'object') return '{}';
+    const payload = {};
+    for (const key of PERSISTED_STATE_KEYS) {
+        if (state[key] !== undefined) {
+            const val = state[key];
+            payload[key] = (val && typeof val === 'object' && !Array.isArray(val)) ? { ...val } : val;
+        }
+    }
+    return JSON.stringify(payload);
+}
+
+export function applySavedStudioState(state, rawJson) {
+    if (!state || !rawJson || typeof rawJson !== 'string') return false;
+    try {
+        const parsed = JSON.parse(rawJson);
+        if (!parsed || typeof parsed !== 'object') return false;
+        const mergeObjKeys = new Set(['bookTitles', 'titlePages', 'activeStyle', 'wsActiveStyle']);
+        for (const key of PERSISTED_STATE_KEYS) {
+            if (parsed[key] === undefined) continue;
+            if (mergeObjKeys.has(key) && parsed[key] && typeof parsed[key] === 'object' && !Array.isArray(parsed[key])) {
+                state[key] = { ...(state[key] || {}), ...parsed[key] };
+            } else {
+                state[key] = parsed[key];
+            }
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function saveStudioState(state) {
+    const target = state || activeStateRef;
+    if (!target) return false;
+    try {
+        if (typeof localStorage === 'undefined') return false;
+        const json = serializeStudioState(target);
+        try {
+            localStorage.setItem(STUDIO_STORAGE_KEY, json);
+            return true;
+        } catch {
+            // Fallback if CSV content is too large for localStorage quota
+            const fallbackState = { ...target, wsCsvContent: null };
+            localStorage.setItem(STUDIO_STORAGE_KEY, serializeStudioState(fallbackState));
+            return true;
+        }
+    } catch {
+        return false;
+    }
+}
+
+export function loadStudioState(state) {
+    if (!state) return false;
+    try {
+        if (typeof localStorage === 'undefined') return false;
+        const saved = localStorage.getItem(STUDIO_STORAGE_KEY);
+        if (!saved) return false;
+        return applySavedStudioState(state, saved);
+    } catch {
+        return false;
+    }
+}
 
 export function setWorkflowStep(index) {
     currentStep = Math.max(0,Math.min(steps.length-1,index));
+    if (activeStateRef) {
+        activeStateRef.step = currentStep;
+        saveStudioState(activeStateRef);
+    }
     document.querySelectorAll('.sidebar-tab-btn').forEach(button => {
         const active = button.dataset.tab === steps[currentStep];
         button.classList.toggle('active',active);
@@ -82,9 +221,11 @@ export function updateWorkflow(state) {
     const wsAnsBadge = el('ws-review-answers-badge');
     if (wsAnsBadge) wsAnsBadge.textContent = `${state.wsSolutionsPerPage} answers / page`;
     el('studio-message').textContent=state.previewError || (invalidContent?'Check your content in Export before downloading.':'');
+    saveStudioState(state);
 }
 
 export function setupWorkflow(state, refresh) {
+    activeStateRef = state;
     document.querySelectorAll('.sidebar-tab-btn').forEach(button=>button.addEventListener('click',()=>setWorkflowStep(steps.indexOf(button.dataset.tab))));
     el('step-back').addEventListener('click',()=>setWorkflowStep(currentStep-1));
     el('step-next').addEventListener('click',()=>setWorkflowStep(currentStep+1));
@@ -93,6 +234,7 @@ export function setupWorkflow(state, refresh) {
     el('include-title-page').addEventListener('change',e=>{state.titlePages[state.mode]=e.target.checked;refresh();});
     document.querySelector('.sidebar-content').addEventListener('input',()=>updateWorkflow(state));
     document.querySelector('.sidebar-content').addEventListener('change',()=>updateWorkflow(state));
-    setWorkflowStep(0);
+    setWorkflowStep(Number.isInteger(state.step) ? state.step : 0);
     syncWorkflowMode(state);
 }
+
