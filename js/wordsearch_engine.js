@@ -372,7 +372,7 @@ export function parseWordSearchText(rawText, defaultTheme = "Word Search", langu
 /**
  * Parse CSV file content (supports multi-theme 'theme,word' or single-column 'word').
  */
-export function parseWordSearchCsv(csvContent, defaultTheme = "Word Search", language = "English", accentMode = "Standard Book Mode") {
+export function parseWordSearchCsv(csvContent, defaultTheme = "Word Search", language = "English", accentMode = "Standard Book Mode", csvMode = "auto") {
     const groups = {};
     const dTheme = defaultTheme.trim() || "Word Search";
 
@@ -386,21 +386,35 @@ export function parseWordSearchCsv(csvContent, defaultTheme = "Word Search", lan
 
     // Detect header
     const firstTokens = lines[0].split(",").map(t => t.replace(/["']/g, "").trim().toLowerCase());
-    const themeIdx = firstTokens.indexOf("theme");
-    const wordIdx = firstTokens.indexOf("word");
+    let themeIdx = firstTokens.indexOf("theme");
+    let wordIdx = firstTokens.indexOf("word");
+    if (wordIdx === -1) wordIdx = firstTokens.indexOf("words");
 
     let startLine = 0;
-    const isThemed = (themeIdx !== -1 && wordIdx !== -1);
-
-    if (isThemed || firstTokens[0] === "word" || firstTokens[0] === "words") {
+    const hasHeader = (themeIdx !== -1 && wordIdx !== -1) || firstTokens[0] === "word" || firstTokens[0] === "words" || firstTokens[0] === "theme";
+    if (hasHeader) {
         startLine = 1;
+    }
+
+    let isThemed = (themeIdx !== -1 && wordIdx !== -1);
+    if (csvMode === "simple") {
+        isThemed = false;
+    } else if (csvMode === "themed") {
+        isThemed = true;
+        if (themeIdx === -1) themeIdx = 0;
+        if (wordIdx === -1) wordIdx = 1;
+    } else if (!isThemed && firstTokens.length >= 2 && !hasHeader) {
+        // Auto-detect headerless 2-column CSV (theme,word)
+        isThemed = true;
+        themeIdx = 0;
+        wordIdx = 1;
     }
 
     for (let i = startLine; i < lines.length; i++) {
         const rawTokens = lines[i].split(",").map(t => t.replace(/["']/g, "").trim());
-        if (!rawTokens[0]) continue;
+        if (!rawTokens[0] && !rawTokens[1]) continue;
 
-        if (isThemed) {
+        if (isThemed && rawTokens.length >= 2) {
             const rowTheme = rawTokens[themeIdx] || dTheme;
             const rowWord = rawTokens[wordIdx] || "";
             const cw = cleanWordForLanguage(rowWord, language, accentMode);
@@ -411,7 +425,8 @@ export function parseWordSearchCsv(csvContent, defaultTheme = "Word Search", lan
                 }
             }
         } else {
-            const cw = cleanWordForLanguage(rawTokens[0], language, accentMode);
+            const colToRead = (wordIdx !== -1 && rawTokens[wordIdx] !== undefined) ? wordIdx : 0;
+            const cw = cleanWordForLanguage(rawTokens[colToRead], language, accentMode);
             if (cw.length >= 3) {
                 if (!groups[dTheme]) groups[dTheme] = [];
                 if (!groups[dTheme].includes(cw)) {

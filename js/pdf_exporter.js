@@ -1,7 +1,7 @@
 import {renderSudokuBookPageCanvas, renderSudokuSolutionPageCanvas,
-    renderWordSearchBookPageCanvas, renderWordSearchSolutionPageCanvas} from './canvas_renderer.js?v=pro9';
-import {TRIM_DIMENSIONS_PT, bookPageCounts, paperbackPageLimit, createBookPage, pageText} from './book_layout.js?v=pro9';
-export {TRIM_DIMENSIONS_PT} from './book_layout.js?v=pro9';
+    renderWordSearchBookPageCanvas, renderWordSearchSolutionPageCanvas} from './canvas_renderer.js?v=pro10';
+import {TRIM_DIMENSIONS_PT, bookPageCounts, paperbackPageLimit, createBookPage, pageText} from './book_layout.js?v=pro10';
+export {TRIM_DIMENSIONS_PT} from './book_layout.js?v=pro10';
 
 // The same physical layout powers previews and exports. PDF pages are rasterized at 300 DPI.
 async function buildBook(options, wordsearch) {
@@ -10,7 +10,7 @@ async function buildBook(options, wordsearch) {
         trimChoice = '8.5 x 11 inches (Letter)', includeTitlePage = true,
         bookTitle = wordsearch ? 'The Word Search Collection' : 'The Sudoku Collection', onProgress} = options;
     if (!puzzles.length) throw new Error('Add puzzles before exporting.');
-    const ppp = wordsearch ? 1 : puzzlesPerPage;
+    const ppp = wordsearch ? (puzzlesPerPage || 1) : puzzlesPerPage;
     const counts = bookPageCounts(puzzles.length,ppp,solutionsPerPage,includeTitlePage);
     if (counts.totalPages < 24 || counts.totalPages > paperbackPageLimit(trimChoice)) {
         throw new Error(`This format needs 24–${paperbackPageLimit(trimChoice)} pages for black ink on white paper. Your book has ${counts.totalPages}. Adjust the puzzle count or page layout.`);
@@ -47,8 +47,11 @@ async function buildBook(options, wordsearch) {
     for(let i=0;i<counts.puzzlePages;i++) {
         const offset=i*ppp;
         const shared={...options,...basic,style,pageNum:i+1,bookPageNum:physicalPage+1,totalPages:counts.puzzlePages};
-        const canvas=wordsearch ? renderWordSearchBookPageCanvas({...shared,puzzle:puzzles[i],
-            dateText:options.dateStrings?.[i],calendarCanvas:options.calendarCanvases?.[i]})
+        const canvas=wordsearch ? renderWordSearchBookPageCanvas({...shared,puzzle:puzzles[offset],
+            puzzlesSlice:puzzles.slice(offset,offset+ppp),puzzlesPerPage:ppp,
+            dateScope:options.dateScope,dateText:options.dateStrings?.[offset],calendarCanvas:options.calendarCanvases?.[offset],
+            dateStrings:options.dateStrings?.slice(offset,offset+ppp),calendarCanvases:options.calendarCanvases?.slice(offset,offset+ppp),
+            pageDateText:options.pageDateStrings?.[i],pageCalendarCanvas:options.pageCalendarCanvases?.[i]})
             : renderSudokuBookPageCanvas({...shared,puzzlesSlice:puzzles.slice(offset,offset+ppp),
                 dateStrings:options.dateStrings?.slice(offset,offset+ppp),calendarCanvases:options.calendarCanvases?.slice(offset,offset+ppp),
                 pageDateText:options.pageDateStrings?.[i],pageCalendarCanvas:options.pageCalendarCanvases?.[i]});

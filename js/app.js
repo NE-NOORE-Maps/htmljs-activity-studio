@@ -1,4 +1,4 @@
-import {setupWorkflow, syncWorkflowMode, updateWorkflow, activeBook} from "./workflow.js?v=pro9";
+import {setupWorkflow, syncWorkflowMode, updateWorkflow, activeBook} from "./workflow.js?v=pro10";
 /**
  * KDP Activity Studio · Main Application Controller
  * Handles reactive UI state, real-time preview rendering, and production exports
@@ -13,14 +13,14 @@ import {
     TYPE_CONFIGS,
     generateSudokuPuzzle,
     generateSudokuBatch
-} from "./sudoku_engine.js?v=pro9";
+} from "./sudoku_engine.js?v=pro10";
 
 import {
     DATE_FORMAT_PRESETS,
     CALENDAR_THEMES,
     getPuzzleDateInfo,
     renderMiniMonthCalendarCanvas
-} from "./calendar_builder.js?v=pro9";
+} from "./calendar_builder.js?v=pro10";
 
 import {
     generateWordSearchPuzzle,
@@ -29,7 +29,7 @@ import {
     maxWordsForGrid,
     parseWordSearchText,
     parseWordSearchCsv
-} from "./wordsearch_engine.js?v=pro9";
+} from "./wordsearch_engine.js?v=pro10";
 
 import {
     SUDOKU_PRESETS,
@@ -41,7 +41,7 @@ import {
     renderWordSearchGridCanvas,
     renderWordSearchBookPageCanvas,
     renderWordSearchSolutionPageCanvas
-} from "./canvas_renderer.js?v=pro9";
+} from "./canvas_renderer.js?v=pro10";
 
 import {
     buildCanvaSudokuExcel,
@@ -49,13 +49,13 @@ import {
     buildPerGridSolutionWorkbooks,
     buildSolutionPageWorkbooks,
     generateCanvaInstructions
-} from "./excel_exporter.js?v=pro9";
+} from "./excel_exporter.js?v=pro10";
 
 import {
     buildSudokuKdpPdf,
     buildWordSearchKdpPdf
-} from "./pdf_exporter.js?v=pro9";
-import {TRIM_DIMENSIONS_PT} from "./book_layout.js?v=pro9";
+} from "./pdf_exporter.js?v=pro10";
+import {TRIM_DIMENSIONS_PT} from "./book_layout.js?v=pro10";
 
 // Global Studio State
 const state = {
@@ -70,7 +70,8 @@ const state = {
     puzzleCount: 50,
     startNumber: 1,
     puzzlesPerPage: 1,
-    solutionsPerPage: 6,
+    solutionsPerPage: 1,
+    sdkSeparateSolutionsPerPage: 6,
     trimChoice: "8.5 x 11 inches (Letter)",
     sameExcel: true,
     sdkSolutionImageMode: "per_grid", // "per_grid" (one PNG per solution) | "per_page" (composed answer page)
@@ -78,10 +79,12 @@ const state = {
     canvaBatchSize: 100, // Pages per Canva bulk batch file (100 = Canva design limit)
 
     // Volume & Layout (Word Search)
-    wsPuzzleCount: 50,
+    wsPuzzleCount: 1,
     wsStartNumber: 1,
-    wsTargetCountEnforced: true,
-    wsSolutionsPerPage: 4,
+    wsTargetCountEnforced: false,
+    wsPuzzlesPerPage: 1,
+    wsSolutionsPerPage: 1,
+    wsSeparateSolutionsPerPage: 4,
     wsTrimChoice: "8.5 x 11 inches (Letter)",
     wsSameExcel: true,
     wsSolutionImageMode: "per_grid", // "per_grid" | "per_page"
@@ -121,6 +124,7 @@ const state = {
     wsLanguage: "English",
     wsAccentMode: "Standard Book Mode",
     wsSource: "paste", // "paste" | "csv"
+    wsCsvMode: "auto", // "auto" | "simple" | "themed"
     wsThemeInput: "Animals",
     wsSeed: 42,
     wsRawText: LANGUAGE_CONFIGS["English"].sample_words,
@@ -135,7 +139,7 @@ const state = {
 
     // Generated preview slice & build cache
     puzzles: [],
-    totalPuzzlesCount: 50,
+    totalPuzzlesCount: 1,
     builtPuzzlesCache: null,
     builtPuzzlesHash: null
 };
@@ -147,6 +151,7 @@ const dom = {
     modeWordsearchBtn: document.getElementById("mode-wordsearch-btn"),
     themeToggleBtn: document.getElementById("theme-toggle-btn"),
     newBookBtn: document.getElementById("new-book-btn"),
+    toggleAllDetailsBtn: document.getElementById("toggle-all-details-btn"),
 
     // Sidebar Tabs
     sidebarTabBtns: document.querySelectorAll(".sidebar-tab-btn"),
@@ -163,6 +168,7 @@ const dom = {
     countPresetBtns: document.querySelectorAll("#sdk-volume-section .preset-pill-btn[data-count]"),
     puzPerPageSel: document.getElementById("sdk-puz-per-page"),
     solPerPageSel: document.getElementById("sdk-sol-per-page"),
+    sdkSolLinkedBadge: document.getElementById("sdk-sol-linked-badge"),
     trimChoiceSel: document.getElementById("sdk-trim-choice"),
     sameExcelTog: document.getElementById("sdk-same-excel-tog"),
     sdkSolLayoutBtns: document.querySelectorAll("#sdk-sol-layout-pills .preset-pill-btn"),
@@ -176,9 +182,13 @@ const dom = {
     // Word Search Volume Controls
     wsCountInput: document.getElementById("ws-count-input"),
     wsCountBadge: document.getElementById("ws-count-badge"),
+    wsAutoCountFormula: document.getElementById("ws-auto-count-formula"),
+    wsAutoCountSub: document.getElementById("ws-auto-count-sub"),
     wsStartNum: document.getElementById("ws-start-num"),
     wsCountPresetBtns: document.querySelectorAll("#ws-count-preset-pills .preset-pill-btn"),
+    wsPuzPerPageSel: document.getElementById("ws-puz-per-page"),
     wsSolPerPageSel: document.getElementById("ws-sol-per-page"),
+    wsSolLinkedBadge: document.getElementById("ws-sol-linked-badge"),
     wsTrimChoiceSel: document.getElementById("ws-trim-choice"),
     wsWordColsSel: document.getElementById("ws-word-cols-select"),
     wsShowBankTog: document.getElementById("ws-show-bank-tog"),
@@ -217,6 +227,7 @@ const dom = {
     audiencePillBtns: document.querySelectorAll("#audience-preset-pills .preset-pill-btn"),
     cellStyleSel: document.getElementById("sdk-cell-style"),
     shadingModeSel: document.getElementById("sdk-shading-mode"),
+    sdkClueFontSel: document.getElementById("sdk-clue-font-sel"),
     outerLwInput: document.getElementById("sdk-outer-lw"),
     blockLwInput: document.getElementById("sdk-block-lw"),
     innerLwInput: document.getElementById("sdk-inner-lw"),
@@ -258,12 +269,14 @@ const dom = {
     wsSourcePillBtns: document.querySelectorAll("#ws-source-pills .preset-pill-btn"),
     wsSrcPasteBtn: document.getElementById("ws-src-paste-btn"),
     wsSrcCsvBtn: document.getElementById("ws-src-csv-btn"),
+    wsSrcCsvThemedBtn: document.getElementById("ws-src-csv-themed-btn"),
     wsThemeInput: document.getElementById("ws-theme-input"),
     wsSeedInput: document.getElementById("ws-seed-input"),
     wsShuffleSeedBtn: document.getElementById("ws-shuffle-seed-btn"),
     wsCsvDropzone: document.getElementById("ws-csv-dropzone"),
     wsCsvFileInput: document.getElementById("ws-csv-file-input"),
     wsCsvFileLabel: document.getElementById("ws-csv-file-label"),
+    wsCsvModeHint: document.getElementById("ws-csv-mode-hint"),
     wsTextareaGroup: document.getElementById("ws-textarea-group"),
     wsWordListInput: document.getElementById("ws-word-list-input"),
     wsWordCountBadge: document.getElementById("ws-word-count-badge"),
@@ -344,30 +357,53 @@ function populateCalendarThemes() {
     });
 }
 
-// Update Word Search Input Summary Card
+// Update Word Search Input Summary Card & Auto-Calculated Puzzle Count
 function updateWsSummaryCard() {
     let groups = {};
     if (state.wsSource === "csv" && state.wsCsvContent) {
-        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode, state.wsCsvMode);
     } else {
         const raw = state.wsRawText || "";
         groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
     }
     const themeCount = Object.keys(groups).length;
     const totalWords = Object.values(groups).reduce((acc, list) => acc + list.length, 0);
+    const wpp = state.wsWordsPerPage || 12;
+
+    let autoPuzzles = 0;
+    for (const words of Object.values(groups)) {
+        const cleaned = words.filter(w => w.length >= 3);
+        if (cleaned.length > 0) {
+            autoPuzzles += Math.max(1, Math.ceil(cleaned.length / wpp));
+        }
+    }
 
     if (dom.wsSummaryText) {
-        dom.wsSummaryText.textContent = `${themeCount} theme${themeCount !== 1 ? "s" : ""} · ${totalWords} valid word${totalWords !== 1 ? "s" : ""}`;
+        dom.wsSummaryText.textContent = `${themeCount} theme${themeCount !== 1 ? "s" : ""} · ${totalWords} valid word${totalWords !== 1 ? "s" : ""} · ${autoPuzzles} auto puzzle${autoPuzzles !== 1 ? "s" : ""}`;
     }
     if (dom.wsWordCountBadge) {
         dom.wsWordCountBadge.textContent = `${totalWords} words`;
     }
     if (dom.wsSampleTag) {
         if (state.wsSource === "csv") {
-            dom.wsSampleTag.textContent = state.wsCsvFileName ? `CSV: ${state.wsCsvFileName}` : "CSV Imported";
+            const modeLabel = state.wsCsvMode === "themed" ? "Themed CSV" : (state.wsCsvMode === "simple" ? "Normal CSV" : "CSV");
+            dom.wsSampleTag.textContent = state.wsCsvFileName ? `${modeLabel}: ${state.wsCsvFileName}` : `${modeLabel} Imported`;
         } else {
             dom.wsSampleTag.textContent = "Word List Input";
         }
+    }
+
+    if (dom.wsAutoCountFormula) {
+        if (state.wsSource === "csv" && (state.wsCsvMode === "themed" || themeCount > 1)) {
+            dom.wsAutoCountFormula.textContent = `Auto-calculated: ${themeCount} CSV theme${themeCount !== 1 ? "s" : ""} (${totalWords} words @ ${wpp}/page) = ${autoPuzzles} puzzle${autoPuzzles !== 1 ? "s" : ""}`;
+        } else {
+            dom.wsAutoCountFormula.textContent = `Auto-calculated: ${totalWords} words ÷ ${wpp} words/page = ${autoPuzzles} puzzle${autoPuzzles !== 1 ? "s" : ""}`;
+        }
+    }
+    if (dom.wsAutoCountSub) {
+        dom.wsAutoCountSub.textContent = state.wsTargetCountEnforced
+            ? `Manual count override is ON (${state.wsPuzzleCount} puzzles). Turn off override to use auto-calculated count (${autoPuzzles}).`
+            : `Calculated automatically from your ${state.wsSource === "csv" ? "CSV records" : "word list"} and words per page.`;
     }
 }
 
@@ -391,7 +427,7 @@ function updateWsCapacityCard() {
         dom.wsCapacityDimText.textContent = `${rows} Rows × ${cols} Columns (${rows * cols} cells)`;
     }
     if (dom.wsCapacitySubText) {
-        dom.wsCapacitySubText.textContent = `Suggested capacity: ~${cap} words per page · ${rows !== cols ? "Rectangular" : "Square"} layout`;
+        dom.wsCapacitySubText.textContent = `Suggested capacity: ~${cap} words per puzzle · ${rows !== cols ? "Rectangular" : "Square"} layout`;
     }
     if (dom.wsWordsPerPageSlider) {
         dom.wsWordsPerPageSlider.max = Math.max(30, cap + 8);
@@ -418,7 +454,7 @@ function updateWsLanguage(langKey) {
         dom.wsDownThemedCsv.textContent = `📥 Themed CSV (${cfg.flag})`;
     }
     if (dom.wsDownSimpleCsv) {
-        dom.wsDownSimpleCsv.textContent = `📥 Simple CSV (${cfg.flag})`;
+        dom.wsDownSimpleCsv.textContent = `📥 Normal CSV (${cfg.flag})`;
     }
     updateWsPromptBox();
 }
@@ -493,17 +529,18 @@ function getWsConfigHash() {
         state.wsThemeInput,
         state.wsTargetCountEnforced,
         state.wsSource,
+        state.wsCsvMode,
         state.wsRawText,
         state.wsCsvFileName,
         state.wsCsvContent || ""
     ].join("|");
 }
 
-// Extract base chunks for Word Search
+// Extract base chunks for Word Search (automatically dividing each theme/word pool by wordsPerPage)
 function getWsBaseChunks() {
     let groups = {};
     if (state.wsSource === "csv" && state.wsCsvContent) {
-        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
+        groups = parseWordSearchCsv(state.wsCsvContent, state.wsThemeInput, state.wsLanguage, state.wsAccentMode, state.wsCsvMode);
     } else {
         const raw = state.wsSource === "csv" ? (state.wsCsvContent || "") : (state.wsRawText || "");
         groups = parseWordSearchText(raw, state.wsThemeInput, state.wsLanguage, state.wsAccentMode);
@@ -518,28 +555,13 @@ function getWsBaseChunks() {
         if (cleaned.length <= wpp) {
             baseChunks.push({ theme, words: cleaned, allWords: cleaned, chunkIndex: 0 });
         } else {
-            const numFullChunks = Math.floor(cleaned.length / wpp);
-            const rem = cleaned.length % wpp;
-            // Only create an additional chunk if the remainder has at least 4 words
-            // AND is at least half of wpp (otherwise a 1-3 word page is unusable)
-            const minAllowedRemainder = Math.min(4, Math.ceil(wpp * 0.5));
-            const hasExtraChunk = rem >= minAllowedRemainder && rem >= 4;
-
-            for (let i = 0; i < numFullChunks; i++) {
+            const totalChunks = Math.ceil(cleaned.length / wpp);
+            for (let i = 0; i < totalChunks; i++) {
                 baseChunks.push({
                     theme,
                     words: cleaned.slice(i * wpp, (i + 1) * wpp),
                     allWords: cleaned,
                     chunkIndex: i
-                });
-            }
-
-            if (hasExtraChunk) {
-                baseChunks.push({
-                    theme,
-                    words: cleaned.slice(numFullChunks * wpp),
-                    allWords: cleaned,
-                    chunkIndex: numFullChunks
                 });
             }
         }
@@ -554,6 +576,9 @@ function getWsBaseChunks() {
 function getWordsForWsPuzzle(item, puzzleIndex, targetWordCount) {
     const allWords = item.allWords || item.words || [];
     const baseWords = item.words || [];
+    if (baseWords && baseWords.length > 0 && puzzleIndex < (state.autoChunkCount || Infinity)) {
+        return baseWords;
+    }
     if (!allWords || allWords.length <= targetWordCount) {
         return baseWords;
     }
@@ -583,13 +608,20 @@ function getWsPuzzleTitle(item, pNum) {
 // Determine total puzzle count needed for Word Search
 function getWsTotalNeeded(baseChunks) {
     if (!baseChunks || baseChunks.length === 0) return 0;
+    state.autoChunkCount = baseChunks.length;
     if (state.wsTargetCountEnforced) {
-        return Math.max(1, state.wsPuzzleCount || 12);
+        return Math.max(1, state.wsPuzzleCount || 1);
     }
-    if (state.wsPuzzleCount && state.wsPuzzleCount > baseChunks.length) {
-        return state.wsPuzzleCount;
+    // Automatically calculate puzzle count from baseChunks!
+    const autoCount = Math.max(1, baseChunks.length);
+    state.wsPuzzleCount = autoCount;
+    if (dom.wsCountInput && document.activeElement !== dom.wsCountInput) {
+        dom.wsCountInput.value = autoCount;
     }
-    return Math.max(1, baseChunks.length);
+    if (dom.wsCountBadge) {
+        dom.wsCountBadge.textContent = autoCount;
+    }
+    return autoCount;
 }
 
 // Determine grid dimensions & fill alphabet for Word Search
@@ -675,10 +707,13 @@ function updatePuzzlesBatch() {
         const baseChunks = getWsBaseChunks();
         state.totalPuzzlesCount = getWsTotalNeeded(baseChunks);
         if (!state.totalPuzzlesCount) { state.puzzles = []; return; }
+        const ppp = state.wsPuzzlesPerPage || 1;
         const spp = state.wsSolutionsPerPage || 4;
 
         let totalPages = 1;
-        if (state.viewMode === "solution_page") {
+        if (state.viewMode === "book_page") {
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / ppp));
+        } else if (state.viewMode === "solution_page") {
             totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / spp));
         } else {
             totalPages = state.totalPuzzlesCount;
@@ -689,7 +724,10 @@ function updatePuzzlesBatch() {
 
         let startIdx = 0;
         let count = 1;
-        if (state.viewMode === "solution_page") {
+        if (state.viewMode === "book_page") {
+            startIdx = (state.currentPage - 1) * ppp;
+            count = Math.min(ppp, state.totalPuzzlesCount - startIdx);
+        } else if (state.viewMode === "solution_page") {
             startIdx = (state.currentPage - 1) * spp;
             count = Math.min(spp, state.totalPuzzlesCount - startIdx);
         } else {
@@ -749,18 +787,19 @@ function updateMetrics() {
         dom.exportSummary.textContent = `${state.totalPuzzlesCount} Puzzles · ${state.trimChoice} · ${state.puzzlesPerPage} game(s)/page${batchInfo} · 300 DPI Commercial Print Ready`;
     } else {
         const langShort = (state.wsLanguage || "English").split(" ")[0];
+        const ppp = state.wsPuzzlesPerPage || 1;
         dom.metricType.textContent = `Word Search (${langShort})`;
         dom.metricDiff.textContent = state.wsDifficulty.toUpperCase();
         dom.metricGrid.textContent = state.puzzles[0] ? `${state.puzzles[0].height} × ${state.puzzles[0].width}` : `${state.wsRows} × ${state.wsCols}`;
         dom.metricClues.textContent = state.puzzles[0] && state.puzzles[0].placedWords ? state.puzzles[0].placedWords.length : "-";
-        dom.metricGamesPage.textContent = `1 (${state.wsWordCols} cols)`;
+        dom.metricGamesPage.textContent = `${ppp} (${state.wsWordCols} cols)`;
 
-        const totalPages = state.totalPuzzlesCount;
+        const totalPages = Math.ceil(state.totalPuzzlesCount / ppp);
         const effectiveBatch = (state.wsCanvaBatchSize && state.wsCanvaBatchSize > 0) ? state.wsCanvaBatchSize : totalPages;
         const batches = Math.ceil(totalPages / effectiveBatch);
         const batchInfo = (batches > 1) ? ` · Canva: ${batches} batches (${state.wsCanvaBatchSize}p/file)` : "";
 
-        dom.exportSummary.textContent = `${state.totalPuzzlesCount} Word Searches · ${state.wsTrimChoice}${batchInfo} · 300 DPI Commercial Print Ready`;
+        dom.exportSummary.textContent = `${state.totalPuzzlesCount} Word Searches · ${state.wsTrimChoice} · ${ppp} game(s)/page${batchInfo} · 300 DPI Commercial Print Ready`;
     }
 
     updateCanvaBatchBadges();
@@ -781,7 +820,8 @@ function updateCanvaBatchBadges() {
     }
 
     if (dom.wsCanvaBatchBadge) {
-        const totalPages = state.mode === "wordsearch" ? state.totalPuzzlesCount : (state.wsPuzzleCount || 12);
+        const totalPuzzles = state.mode === "wordsearch" ? state.totalPuzzlesCount : (state.wsPuzzleCount || 1);
+        const totalPages = Math.ceil(totalPuzzles / (state.wsPuzzlesPerPage || 1));
         if (!state.wsCanvaBatchSize || state.wsCanvaBatchSize <= 0) {
             dom.wsCanvaBatchBadge.textContent = `No split (${totalPages} pages)`;
         } else {
@@ -849,7 +889,8 @@ function renderStageContent() {
     } else {
         // Word Search mode
         if (state.viewMode === "book_page") {
-            totalPages = state.totalPuzzlesCount;
+            const ppp = state.wsPuzzlesPerPage || 1;
+            totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / ppp));
         } else if (state.viewMode === "solution_page") {
             const spp = state.wsSolutionsPerPage || 4;
             totalPages = Math.max(1, Math.ceil(state.totalPuzzlesCount / spp));
@@ -1033,39 +1074,76 @@ function renderWordSearchStage(ctx, totalPages) {
     const pIdx = state.currentPage - 1;
     const p = state.puzzles[0];
     if (!p) return;
-
-    let dTxt = null;
-    let calCanvas = null;
-
-    if (state.dateEnabled) {
-        const info = getPuzzleDateInfo(pIdx, state.startDate, state.progression, state.dateFormat);
-        dTxt = info.dateStr;
-
-        if (state.dateMode === "calendar_image") {
-            calCanvas = renderMiniMonthCalendarCanvas({
-                year: info.year,
-                month: info.month,
-                highlightDay: info.highlightDay,
-                theme: state.calTheme,
-                firstDaySunday: state.calSunday,
-                showCardBorder: state.calBorder,
-                showYear: state.calShowYear
-            });
-        }
-    }
+    const ppp = state.wsPuzzlesPerPage || 1;
 
     if (state.viewMode === "book_page") {
+        const startIdx = (state.currentPage - 1) * ppp;
+        const endIdx = Math.min(state.totalPuzzlesCount, startIdx + ppp);
+        const pSlice = state.puzzles;
+
+        let dateStrings = null;
+        let calendarCanvases = null;
+        let pageDateText = null;
+        let pageCalendarCanvas = null;
+
+        if (state.dateEnabled) {
+            if (state.dateScope === "per_page") {
+                const pageIdx = state.currentPage - 1;
+                const info = getPuzzleDateInfo(pageIdx, state.startDate, state.progression, state.dateFormat);
+                pageDateText = info.dateStr;
+
+                if (state.dateMode === "calendar_image") {
+                    pageCalendarCanvas = renderMiniMonthCalendarCanvas({
+                        year: info.year,
+                        month: info.month,
+                        highlightDay: info.highlightDay,
+                        theme: state.calTheme,
+                        firstDaySunday: state.calSunday,
+                        showCardBorder: state.calBorder,
+                        showYear: state.calShowYear
+                    });
+                }
+            } else {
+                dateStrings = [];
+                calendarCanvases = [];
+                for (let i = startIdx; i < endIdx; i++) {
+                    const info = getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat);
+                    dateStrings.push(info.dateStr);
+
+                    if (state.dateMode === "calendar_image") {
+                        const cCanvas = renderMiniMonthCalendarCanvas({
+                            year: info.year,
+                            month: info.month,
+                            highlightDay: info.highlightDay,
+                            theme: state.calTheme,
+                            firstDaySunday: state.calSunday,
+                            showCardBorder: state.calBorder,
+                            showYear: state.calShowYear
+                        });
+                        calendarCanvases.push(cCanvas);
+                    }
+                }
+            }
+        }
+
         const pageCnv = renderWordSearchBookPageCanvas({
             trimChoice: state.wsTrimChoice,
             bookTotalPages: activeBook(state).totalPages,
             bookPageNum: state.currentPage + Number(activeBook(state).includeTitlePage),
             puzzle: p,
+            puzzlesSlice: pSlice,
+            puzzlesPerPage: ppp,
             style: state.wsActiveStyle,
             pageNum: state.currentPage,
             totalPages,
             dpi: 150,
-            dateText: dTxt,
-            calendarCanvas: calCanvas,
+            dateScope: state.dateScope,
+            dateText: dateStrings ? dateStrings[0] : pageDateText,
+            calendarCanvas: calendarCanvases ? calendarCanvases[0] : pageCalendarCanvas,
+            dateStrings,
+            calendarCanvases,
+            pageDateText,
+            pageCalendarCanvas,
             wordColumns: state.wsWordCols,
             showWordBank: state.wsShowWordBank,
             wordBankTitle: LANGUAGE_CONFIGS[state.wsLanguage]?.word_bank_title
@@ -1096,6 +1174,13 @@ function renderWordSearchStage(ctx, totalPages) {
         ctx.drawImage(solCnv, 0, 0);
 
     } else if (state.viewMode === "single_puzzle") {
+        let dTxt = null;
+        if (state.dateEnabled) {
+            const dateIdx = (state.dateScope === "per_page") ? Math.floor(pIdx / ppp) : pIdx;
+            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
+            dTxt = info.dateStr;
+        }
+
         const pCnv = renderWordSearchGridCanvas({
             puzzle: p,
             style: state.wsActiveStyle,
@@ -1112,6 +1197,13 @@ function renderWordSearchStage(ctx, totalPages) {
         ctx.drawImage(pCnv, 0, 0);
 
     } else if (state.viewMode === "single_solution") {
+        let dTxt = null;
+        if (state.dateEnabled) {
+            const dateIdx = (state.dateScope === "per_page") ? Math.floor(pIdx / ppp) : pIdx;
+            const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
+            dTxt = info.dateStr;
+        }
+
         const sCnv = renderWordSearchGridCanvas({
             puzzle: p,
             style: state.wsActiveStyle,
@@ -1129,9 +1221,59 @@ function renderWordSearchStage(ctx, totalPages) {
     }
 }
 
+// Keep Solutions per page linked to Games per page when solutions are included
+// with the puzzle (Same Excel = ON), or unlocked up to 9/page when separate.
+function syncSolutionPerPageLock() {
+    // Word Search
+    if (state.wsSameExcel && state.wsSolutionImageMode === "per_grid") {
+        state.wsSolutionsPerPage = state.wsPuzzlesPerPage || 1;
+        if (dom.wsSolPerPageSel) {
+            dom.wsSolPerPageSel.value = String(state.wsSolutionsPerPage);
+            dom.wsSolPerPageSel.disabled = true;
+        }
+        if (dom.wsSolLinkedBadge) {
+            const g = state.wsPuzzlesPerPage || 1;
+            dom.wsSolLinkedBadge.textContent = `Linked to ${g} game${g > 1 ? "s" : ""}/page`;
+        }
+    } else {
+        state.wsSolutionsPerPage = state.wsSeparateSolutionsPerPage || 4;
+        if (dom.wsSolPerPageSel) {
+            dom.wsSolPerPageSel.disabled = false;
+            dom.wsSolPerPageSel.value = String(state.wsSolutionsPerPage);
+        }
+        if (dom.wsSolLinkedBadge) {
+            dom.wsSolLinkedBadge.textContent = "Separate · Max 9 / page";
+        }
+    }
+
+    // Sudoku
+    if (state.sameExcel && state.sdkSolutionImageMode === "per_grid") {
+        state.solutionsPerPage = state.puzzlesPerPage || 1;
+        if (dom.solPerPageSel) {
+            dom.solPerPageSel.value = String(state.solutionsPerPage);
+            dom.solPerPageSel.disabled = true;
+        }
+        if (dom.sdkSolLinkedBadge) {
+            const g = state.puzzlesPerPage || 1;
+            dom.sdkSolLinkedBadge.textContent = `Linked to ${g} game${g > 1 ? "s" : ""}/page`;
+        }
+    } else {
+        state.solutionsPerPage = state.sdkSeparateSolutionsPerPage || 6;
+        if (dom.solPerPageSel) {
+            dom.solPerPageSel.disabled = false;
+            dom.solPerPageSel.value = String(state.solutionsPerPage);
+        }
+        if (dom.sdkSolLinkedBadge) {
+            dom.sdkSolLinkedBadge.textContent = "Separate · Max 9 / page";
+        }
+    }
+}
+
 // Master Refresh
 function refreshStudio() {
     try {
+        syncSolutionPerPageLock();
+        updateWsSummaryCard();
         updatePuzzlesBatch();
         updateMetrics();
         updateMiniCalendarThumbnail();
@@ -1149,8 +1291,8 @@ function setupSolutionLayoutPills(btns, helpEl, sameExcelTog, prefix) {
     if (!btns || !btns.length) return;
     const modeKey = prefix === "ws" ? "wsSolutionImageMode" : "sdkSolutionImageMode";
     const helpText = {
-        per_grid: "One image per solution grid — best for templates with a single solution frame, easy to bulk-map in Canva.",
-        per_page: `Grids are composed onto one image using Answers per page (e.g. 4 solutions in one image). Exported as a separate solution workbook.`
+        per_grid: "One image per solution grid — when included with the puzzle, solutions are paired with each game page; when separate, up to 9 solution grids per Excel row.",
+        per_page: `Grids are composed onto one full answer page image (up to 9 solutions per page). Exported as a separate solution workbook.`
     };
     const sync = () => {
         const perPage = state[modeKey] === "per_page";
@@ -1164,6 +1306,7 @@ function setupSolutionLayoutPills(btns, helpEl, sameExcelTog, prefix) {
             b.classList.toggle("active", on);
             b.setAttribute("aria-checked", String(on));
         });
+        syncSolutionPerPageLock();
     };
     if (!btns._solLayoutWired) {
         btns._solLayoutWired = true;
@@ -1175,7 +1318,7 @@ function setupSolutionLayoutPills(btns, helpEl, sameExcelTog, prefix) {
                     if (prefix === "sdk") state.sameExcel = false;
                 }
                 sync();
-                updateWorkflow(state);
+                refreshStudio();
             });
         });
     }
@@ -1187,6 +1330,35 @@ function setupEvents() {
     // Mode Switcher (Sudoku vs Word Search)
     dom.modeSudokuBtn.addEventListener("click", () => setStudioMode("sudoku"));
     dom.modeWordsearchBtn.addEventListener("click", () => setStudioMode("wordsearch"));
+
+    // Collapse / Expand All Sections button + sync with individual <details class="advanced">
+    const syncToggleAllBtnLabel = () => {
+        if (!dom.toggleAllDetailsBtn) return;
+        const detailsList = Array.from(document.querySelectorAll("details.advanced"));
+        const anyClosed = detailsList.some(d => !d.open);
+        dom.toggleAllDetailsBtn.textContent = anyClosed ? "📂 Expand All Sections" : "📂 Collapse All Sections";
+        dom.toggleAllDetailsBtn.setAttribute("aria-expanded", String(!anyClosed));
+    };
+
+    if (dom.toggleAllDetailsBtn) {
+        dom.toggleAllDetailsBtn.addEventListener("click", () => {
+            const detailsList = Array.from(document.querySelectorAll("details.advanced"));
+            const anyClosed = detailsList.some(d => !d.open);
+            const targetOpen = anyClosed;
+            detailsList.forEach(d => { d.open = targetOpen; });
+            if (dom.wsAiExpanderBody && dom.wsAiExpanderHdr && dom.wsAiExpIcon) {
+                dom.wsAiExpanderBody.classList.toggle("open", targetOpen);
+                dom.wsAiExpanderHdr.setAttribute("aria-expanded", String(targetOpen));
+                dom.wsAiExpanderBody.style.display = targetOpen ? "flex" : "none";
+                dom.wsAiExpIcon.textContent = targetOpen ? "▲" : "▼";
+            }
+            syncToggleAllBtnLabel();
+        });
+    }
+
+    document.querySelectorAll("details.advanced").forEach(d => {
+        d.addEventListener("toggle", syncToggleAllBtnLabel);
+    });
 
     // Solution image granularity (one PNG per grid vs one composed page image)
     setupSolutionLayoutPills(dom.sdkSolLayoutBtns, dom.sdkSolLayoutHelp, dom.sameExcelTog, "sdk");
@@ -1296,11 +1468,15 @@ function setupEvents() {
 
     dom.puzPerPageSel.addEventListener("change", (e) => {
         state.puzzlesPerPage = parseInt(e.target.value, 10);
+        syncSolutionPerPageLock("sdk");
         if (state.mode === "sudoku") refreshStudio();
     });
 
     dom.solPerPageSel.addEventListener("change", (e) => {
         state.solutionsPerPage = parseInt(e.target.value, 10);
+        if (!state.sameExcel) {
+            state.sdkSeparateSolutionsPerPage = state.solutionsPerPage;
+        }
         if (state.mode === "sudoku") refreshStudio();
     });
 
@@ -1311,10 +1487,9 @@ function setupEvents() {
 
     dom.sameExcelTog.addEventListener("change", (e) => {
         state.sameExcel = e.target.checked;
-        if (state.mode === "sudoku") updateWorkflow(state);
+        syncSolutionPerPageLock("sdk");
+        if (state.mode === "sudoku") refreshStudio();
     });
-
-    setupSolutionLayoutPills(dom.sdkSolLayoutBtns, dom.sdkSolLayoutHelp, dom.sameExcelTog, "sdk");
 
     dom.instructionsTog.addEventListener("change", (e) => {
         state.includeInstructions = e.target.checked;
@@ -1350,6 +1525,11 @@ function setupEvents() {
     if (dom.wsCountInput) {
         dom.wsCountInput.addEventListener("input", (e) => {
             state.wsPuzzleCount = Math.max(1, Math.min(5000, parseInt(e.target.value, 10) || 1));
+            state.wsTargetCountEnforced = true;
+            if (dom.wsTargetCountTog) dom.wsTargetCountTog.checked = true;
+            if (dom.wsCountPresetBtns) {
+                dom.wsCountPresetBtns.forEach(b => b.classList.toggle("active", b.dataset.count === String(state.wsPuzzleCount)));
+            }
             if (dom.wsCountBadge) dom.wsCountBadge.textContent = state.wsPuzzleCount;
             if (state.mode === "wordsearch") refreshStudio();
         });
@@ -1360,10 +1540,18 @@ function setupEvents() {
             btn.addEventListener("click", () => {
                 dom.wsCountPresetBtns.forEach(b => b.classList.remove("active"));
                 btn.classList.add("active");
-                const cnt = parseInt(btn.dataset.count, 10);
-                state.wsPuzzleCount = cnt;
-                if (dom.wsCountInput) dom.wsCountInput.value = cnt;
-                if (dom.wsCountBadge) dom.wsCountBadge.textContent = cnt;
+                if (btn.dataset.count === "auto") {
+                    state.wsTargetCountEnforced = false;
+                    if (dom.wsTargetCountTog) dom.wsTargetCountTog.checked = false;
+                    updateWsSummaryCard();
+                } else {
+                    const cnt = parseInt(btn.dataset.count, 10) || 50;
+                    state.wsTargetCountEnforced = true;
+                    if (dom.wsTargetCountTog) dom.wsTargetCountTog.checked = true;
+                    state.wsPuzzleCount = cnt;
+                    if (dom.wsCountInput) dom.wsCountInput.value = cnt;
+                    if (dom.wsCountBadge) dom.wsCountBadge.textContent = cnt;
+                }
                 if (state.mode === "wordsearch") refreshStudio();
             });
         });
@@ -1376,9 +1564,20 @@ function setupEvents() {
         });
     }
 
+    if (dom.wsPuzPerPageSel) {
+        dom.wsPuzPerPageSel.addEventListener("change", (e) => {
+            state.wsPuzzlesPerPage = Math.max(1, Math.min(2, parseInt(e.target.value, 10) || 1));
+            syncSolutionPerPageLock("ws");
+            if (state.mode === "wordsearch") refreshStudio();
+        });
+    }
+
     if (dom.wsSolPerPageSel) {
         dom.wsSolPerPageSel.addEventListener("change", (e) => {
             state.wsSolutionsPerPage = parseInt(e.target.value, 10);
+            if (!state.wsSameExcel) {
+                state.wsSeparateSolutionsPerPage = state.wsSolutionsPerPage;
+            }
             if (state.mode === "wordsearch") refreshStudio();
         });
     }
@@ -1407,15 +1606,20 @@ function setupEvents() {
     if (dom.wsSameExcelTog) {
         dom.wsSameExcelTog.addEventListener("change", (e) => {
             state.wsSameExcel = e.target.checked;
-            if (state.mode === "wordsearch") updateWorkflow(state);
+            syncSolutionPerPageLock("ws");
+            if (state.mode === "wordsearch") refreshStudio();
         });
     }
-
-    setupSolutionLayoutPills(dom.wsSolLayoutBtns, dom.wsSolLayoutHelp, dom.wsSameExcelTog, "ws");
 
     if (dom.wsTargetCountTog) {
         dom.wsTargetCountTog.addEventListener("change", (e) => {
             state.wsTargetCountEnforced = e.target.checked;
+            if (!state.wsTargetCountEnforced) {
+                if (dom.wsCountPresetBtns) {
+                    dom.wsCountPresetBtns.forEach(b => b.classList.toggle("active", b.dataset.count === "auto"));
+                }
+                updateWsSummaryCard();
+            }
             if (state.mode === "wordsearch") refreshStudio();
         });
     }
@@ -1552,10 +1756,21 @@ function setupEvents() {
                 dom.innerLwInput.value = state.activeStyle.innerLineWidth;
                 dom.fontScaleInput.value = state.activeStyle.fontScale;
                 dom.solutionModeSel.value = state.activeStyle.solutionMode;
+                if (dom.sdkClueFontSel && state.activeStyle.fontFamily) {
+                    const hasOpt = Array.from(dom.sdkClueFontSel.options).some(o => o.value === state.activeStyle.fontFamily);
+                    if (hasOpt) dom.sdkClueFontSel.value = state.activeStyle.fontFamily;
+                }
                 if (state.mode === "sudoku") renderStage();
             }
         });
     });
+
+    if (dom.sdkClueFontSel) {
+        dom.sdkClueFontSel.addEventListener("change", (e) => {
+            state.activeStyle.fontFamily = e.target.value;
+            if (state.mode === "sudoku") renderStage();
+        });
+    }
 
     dom.cellStyleSel.addEventListener("change", (e) => {
         state.activeStyle.cellStyle = e.target.value;
@@ -1809,8 +2024,10 @@ function setupEvents() {
             state.wsRawText = cfg.sample_words;
             if (dom.wsWordListInput) dom.wsWordListInput.value = state.wsRawText;
             state.wsSource = "paste";
-            if (dom.wsSrcPasteBtn) dom.wsSrcPasteBtn.classList.add("active");
-            if (dom.wsSrcCsvBtn) dom.wsSrcCsvBtn.classList.remove("active");
+            state.wsCsvMode = "auto";
+            if (dom.wsSourcePillBtns) {
+                dom.wsSourcePillBtns.forEach(b => b.classList.toggle("active", b.dataset.source === "paste"));
+            }
             if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "block";
             if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "none";
             updateWsSummaryCard();
@@ -1818,17 +2035,46 @@ function setupEvents() {
         });
     }
 
-    // Step 2: Source pills (Paste vs CSV)
+    // Step 1: Source pills (Paste vs Normal CSV vs Themed CSV)
     if (dom.wsSourcePillBtns) {
         dom.wsSourcePillBtns.forEach(btn => {
             btn.addEventListener("click", () => {
                 dom.wsSourcePillBtns.forEach(b => b.classList.remove("active"));
                 btn.classList.add("active");
-                state.wsSource = btn.dataset.source;
-                if (state.wsSource === "paste") {
+                const src = btn.dataset.source;
+                if (src === "paste") {
+                    state.wsSource = "paste";
+                    state.wsCsvMode = "auto";
                     if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "block";
                     if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "none";
+                    if (dom.wsCsvModeDesc) {
+                        dom.wsCsvModeDesc.textContent = "Paste one word per line — puzzle count is calculated automatically (total words ÷ words per puzzle).";
+                    }
+                } else if (src === "csv-simple") {
+                    state.wsSource = "csv";
+                    state.wsCsvMode = "simple";
+                    if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "none";
+                    if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "flex";
+                    if (dom.wsCsvModeHint) {
+                        dom.wsCsvModeHint.textContent = "Normal CSV mode: 1 column of words (header 'word' optional). Total words ÷ words per puzzle = puzzle count.";
+                    }
+                    if (dom.wsCsvModeDesc) {
+                        dom.wsCsvModeDesc.textContent = "Normal CSV (word): total words in the CSV are divided by Words per puzzle to calculate the puzzle count.";
+                    }
+                } else if (src === "csv-themed") {
+                    state.wsSource = "csv";
+                    state.wsCsvMode = "themed";
+                    if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "none";
+                    if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "flex";
+                    if (dom.wsCsvModeHint) {
+                        dom.wsCsvModeHint.textContent = "Themed CSV mode: 2 columns 'theme,word'. Each unique theme in the CSV creates its own puzzle(s) automatically.";
+                    }
+                    if (dom.wsCsvModeDesc) {
+                        dom.wsCsvModeDesc.textContent = "Themed CSV (theme,word): puzzle count is calculated automatically from the theme records in your CSV.";
+                    }
                 } else {
+                    state.wsSource = "csv";
+                    state.wsCsvMode = "auto";
                     if (dom.wsTextareaGroup) dom.wsTextareaGroup.style.display = "none";
                     if (dom.wsCsvDropzone) dom.wsCsvDropzone.style.display = "flex";
                 }
@@ -1961,7 +2207,7 @@ function setupEvents() {
         });
     }
 
-    // Step 3: Grid Dimensions & Capacity
+    // Step 2: Grid Dimensions & Capacity
     if (dom.wsGridDimSelect) {
         dom.wsGridDimSelect.addEventListener("change", (e) => {
             state.wsGridChoice = e.target.value;
@@ -2019,6 +2265,7 @@ function setupEvents() {
         dom.wsWordsPerPageSlider.addEventListener("input", (e) => {
             state.wsWordsPerPage = parseInt(e.target.value, 10) || 12;
             if (dom.wsWordsPerPageVal) dom.wsWordsPerPageVal.textContent = state.wsWordsPerPage;
+            updateWsSummaryCard();
             if (state.mode === "wordsearch") refreshStudio();
         });
     }
@@ -2203,7 +2450,7 @@ async function renderSolutionPageImages(puzzles, onProgress, startPage = 0, endP
 // requested range is filled (the rest stay empty and cost nothing).
 async function renderImageSlice(puzzles, { puzStart, puzEnd, pageStart, pageEnd, needSolution = false, onProgress }) {
     const ws = state.mode === "wordsearch";
-    const ppp = ws ? 1 : state.puzzlesPerPage;
+    const ppp = ws ? (state.wsPuzzlesPerPage || 1) : state.puzzlesPerPage;
     const total = puzzles.length;
     const totalPages = Math.ceil(total / ppp);
     const gridImages = new Array(total);
@@ -2329,7 +2576,7 @@ async function handleExportCanva() {
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
 
         const ws = state.mode === "wordsearch";
-        const ppp = ws ? 1 : state.puzzlesPerPage;
+        const ppp = ws ? (state.wsPuzzlesPerPage || 1) : state.puzzlesPerPage;
         const answers = ws ? state.wsSolutionsPerPage : state.solutionsPerPage;
         const sameExcel = ws ? state.wsSameExcel : state.sameExcel;
         const imageMode = (ws ? state.wsSolutionImageMode : state.sdkSolutionImageMode) === "per_page" ? "per_page" : "per_grid";
@@ -2382,7 +2629,13 @@ async function handleExportCanva() {
 
         let result;
         if (ws) {
-            result = await buildCanvaWordSearchExcel({ ...common, solutionsPerPage: answers });
+            result = await buildCanvaWordSearchExcel({
+                ...common,
+                puzzlesPerPage: ppp,
+                solutionsPerPage: answers,
+                dateScope: state.dateScope,
+                pageDateStrings: state.dateEnabled ? pageDateStrings : []
+            });
         } else {
             result = await buildCanvaSudokuExcel({
                 ...common,
@@ -2414,7 +2667,7 @@ async function handleExportCanva() {
                 totalPages: result.totalPages,
                 batchSize: batchSize || 100,
                 numBatches: result.totalBatches,
-                puzzlesPerPage: state.mode === "sudoku" ? state.puzzlesPerPage : 1
+                puzzlesPerPage: ppp
             });
             zip.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
 
@@ -2487,7 +2740,8 @@ async function handleExportPdf() {
         const fullPuzzles = await getOrBuildFullPuzzlesBatch(setProgress);
         setProgress(15, "Building print-ready KDP PDF book...");
         const totalPuzzles = fullPuzzles.length;
-        const totalPages = Math.ceil(totalPuzzles / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
+        const pppPdf = state.mode === "sudoku" ? state.puzzlesPerPage : (state.wsPuzzlesPerPage || 1);
+        const totalPages = Math.ceil(totalPuzzles / pppPdf);
 
         const dateStrings = fullPuzzles.map((_, i) =>
             state.dateEnabled ? getPuzzleDateInfo(i, state.startDate, state.progression, state.dateFormat).dateStr : ""
@@ -2558,10 +2812,14 @@ async function handleExportPdf() {
                 includeTitlePage: state.titlePages[state.mode],
                 puzzles: fullPuzzles,
                 style: state.wsActiveStyle,
+                puzzlesPerPage: state.wsPuzzlesPerPage || 1,
                 solutionsPerPage: state.wsSolutionsPerPage || 4,
                 trimChoice: state.wsTrimChoice,
+                dateScope: state.dateScope,
                 dateStrings: state.dateEnabled ? dateStrings : [],
                 calendarCanvases,
+                pageDateStrings: state.dateEnabled ? pageDateStrings : [],
+                pageCalendarCanvases,
                 wordColumns: state.wsWordCols,
                 showWordBank: state.wsShowWordBank,
                 wordBankTitle: LANGUAGE_CONFIGS[state.wsLanguage]?.word_bank_title,
@@ -2595,7 +2853,9 @@ async function handleExportZip() {
         const zip = new window.JSZip();
         const imgFolder = zip.folder("images");
         const total = fullPuzzles.length;
-        const totalPages = Math.ceil(total / (state.mode === "sudoku" ? state.puzzlesPerPage : 1));
+        const wsMode = state.mode === "wordsearch";
+        const pppZ = wsMode ? (state.wsPuzzlesPerPage || 1) : state.puzzlesPerPage;
+        const totalPages = Math.ceil(total / pppZ);
 
         setProgress(15, `Rendering 300 DPI high-resolution puzzle images: 0 / ${total}`);
 
@@ -2648,7 +2908,7 @@ async function handleExportZip() {
 
             if (state.dateEnabled) {
                 const dateIdx = (state.dateScope === "per_page")
-                    ? Math.floor(i / (state.mode === "sudoku" ? state.puzzlesPerPage : 1))
+                    ? Math.floor(i / pppZ)
                     : i;
                 const info = getPuzzleDateInfo(dateIdx, state.startDate, state.progression, state.dateFormat);
                 dTxt = info.dateStr;
@@ -2739,8 +2999,6 @@ async function handleExportZip() {
 
         // Add Canva Excel with embedded pictures and complete answer-page images.
         setProgress(72, "Adding Canva Bulk Create Excel workbook with embedded pictures...");
-        const wsMode = state.mode === "wordsearch";
-        const pppZ = wsMode ? 1 : state.puzzlesPerPage;
         const answersZ = wsMode ? state.wsSolutionsPerPage : state.solutionsPerPage;
         const sameExcelZ = wsMode ? state.wsSameExcel : state.sameExcel;
         const imageModeZ = (wsMode ? state.wsSolutionImageMode : state.sdkSolutionImageMode) === "per_page" ? "per_page" : "per_grid";
@@ -2792,7 +3050,13 @@ async function handleExportZip() {
         };
 
         const canvaResult = wsMode
-            ? await buildCanvaWordSearchExcel({ ...canvaCommon, solutionsPerPage: answersZ })
+            ? await buildCanvaWordSearchExcel({
+                ...canvaCommon,
+                puzzlesPerPage: pppZ,
+                solutionsPerPage: answersZ,
+                dateScope: state.dateScope,
+                pageDateStrings: state.dateEnabled ? pageDateStrings : []
+            })
             : await buildCanvaSudokuExcel({
                 ...canvaCommon,
                 puzzlesPerPage: pppZ,
@@ -2828,7 +3092,7 @@ async function handleExportZip() {
                 totalPages: canvaResult.totalPages,
                 batchSize: batchSize || 100,
                 numBatches: canvaResult.totalBatches,
-                puzzlesPerPage: wsMode ? 1 : state.puzzlesPerPage
+                puzzlesPerPage: pppZ
             });
             canvaFolder.file("CANVA_BULK_CREATE_INSTRUCTIONS.txt", instructions);
         } else {
@@ -2879,6 +3143,8 @@ window.addEventListener("DOMContentLoaded", () => {
     updateWsLanguage(state.wsLanguage);
     updateWsSummaryCard();
     updateWsCapacityCard();
+    syncSolutionPerPageLock("sdk");
+    syncSolutionPerPageLock("ws");
     setupEvents();
     setupWorkflow(state, refreshStudio);
     setStudioMode(state.mode);

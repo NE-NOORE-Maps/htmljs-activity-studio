@@ -1,7 +1,7 @@
-import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro9';
+import {bookPageCounts, paperbackPageLimit, pageGeometry} from './book_layout.js?v=pro10';
 
 const steps = ['tab-volume','tab-rules','tab-styling','tab-review'];
-const names = ['Book setup','Puzzle content','Page design','Review & export'];
+const names = ['Words import','Words settings','Solution settings','Export'];
 let currentStep = 0;
 const el = id => document.getElementById(id);
 
@@ -15,14 +15,14 @@ export function setWorkflowStep(index) {
     document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.toggle('active',panel.id===steps[currentStep]));
     el('step-back').disabled = currentStep===0;
     el('step-next').hidden = currentStep===3;
-    el('step-next').textContent = currentStep<3 ? `Next: ${names[currentStep+1]} →` : 'Review & export';
+    el('step-next').textContent = currentStep<3 ? `Next: ${names[currentStep+1]} →` : 'Export';
     window.scrollTo({top: 0, behavior: 'instant'});
 }
 
 export function activeBook(state) {
     const ws = state.mode === 'wordsearch';
     const count = state.totalPuzzlesCount || 0;
-    const perPage = ws?1:state.puzzlesPerPage;
+    const perPage = ws ? (state.wsPuzzlesPerPage || 1) : state.puzzlesPerPage;
     const answers = ws?state.wsSolutionsPerPage:state.solutionsPerPage;
     const trim = ws?state.wsTrimChoice:state.trimChoice;
     const title = state.bookTitles[state.mode];
@@ -81,7 +81,7 @@ export function updateWorkflow(state) {
     if (sdkAnsBadge) sdkAnsBadge.textContent = `${state.solutionsPerPage} answers / page`;
     const wsAnsBadge = el('ws-review-answers-badge');
     if (wsAnsBadge) wsAnsBadge.textContent = `${state.wsSolutionsPerPage} answers / page`;
-    el('studio-message').textContent=state.previewError || (invalidContent?'Check your content in Review & export before downloading.':'');
+    el('studio-message').textContent=state.previewError || (invalidContent?'Check your content in Export before downloading.':'');
 }
 
 export function setupWorkflow(state, refresh) {

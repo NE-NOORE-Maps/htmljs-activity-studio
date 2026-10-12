@@ -66,5 +66,92 @@ test('Advanced puzzle settings details elements are open by default', () => {
     for (const match of advancedMatches) {
         assert.ok(match[1].includes('open'), 'Expected details element to have open attribute');
     }
+
+    // All details.advanced sections across all 4 steps should be open by default
+    const allDetails = [...indexHtml.matchAll(/<details\s+class="advanced"([^>]*)>/g)];
+    assert.ok(allDetails.length >= 6, 'Expected multiple details.advanced sections across steps');
+    for (const match of allDetails) {
+        assert.ok(match[1].includes('open'), 'Every details.advanced section must be open by default');
+    }
 });
+
+test('Font dropdowns categorize commercial-free fonts for Kids, Senior, Adult, and Technical', () => {
+    const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.ok(indexHtml.includes('Kids &amp; Activity (Friendly &amp; Rounded)'), 'Expected Kids & Activity font category');
+    assert.ok(indexHtml.includes('Senior &amp; Large Print (High Legibility)'), 'Expected Senior & Large Print font category');
+    assert.ok(indexHtml.includes('Adult &amp; Classic Editorial'), 'Expected Adult & Classic Editorial font category');
+    assert.ok(indexHtml.includes('Technical &amp; Monospace'), 'Expected Technical & Monospace font category');
+});
+
+test('parseWordSearchCsv handles simple and themed CSV modes explicitly', async () => {
+    const { parseWordSearchCsv } = await import('../js/wordsearch_engine.js');
+
+    const simpleCsv = 'word\nAPPLE\nBANANA\nCHERRY\nORANGE\nGRAPE\nLEMON';
+    const simpleRes = parseWordSearchCsv(simpleCsv, 'Fruits', 'English', 'Standard Book Mode', 'simple');
+    assert.deepEqual(Object.keys(simpleRes), ['Fruits']);
+    assert.equal(simpleRes.Fruits.length, 6);
+
+    const themedCsv = 'theme,word\nSpace,PLANET\nSpace,ROCKET\nOcean,WHALE\nOcean,CORAL';
+    const themedRes = parseWordSearchCsv(themedCsv, 'General', 'English', 'Standard Book Mode', 'themed');
+    assert.deepEqual(Object.keys(themedRes), ['Space', 'Ocean']);
+    assert.equal(themedRes.Space.length, 2);
+    assert.equal(themedRes.Ocean.length, 2);
+});
+
+test('buildCanvaWordSearchExcel supports 2 games per page with separate word banks and linked solutions', async () => {
+    const prevWindow = globalThis.window;
+    const addedRows = [];
+    let definedCols = [];
+    globalThis.window = {
+        ExcelJS: {
+            Workbook: class {
+                constructor() {
+                    this.xlsx = { writeBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
+                }
+                addImage() { return 1; }
+                addWorksheet() {
+                    return {
+                        set columns(c) { definedCols = c; },
+                        get columns() { return definedCols; },
+                        getRow: () => ({}),
+                        addRow: (r) => { addedRows.push(r); return {}; },
+                        addImage: () => {}
+                    };
+                }
+            }
+        }
+    };
+    try {
+        const { buildCanvaWordSearchExcel } = await import('../js/excel_exporter.js');
+        const puzzles = [
+            { title: 'Animals #1', difficultyLabel: 'EASY', placedWords: ['CAT', 'DOG', 'BIRD'], grid: [['C','A','T']] },
+            { title: 'Animals #2', difficultyLabel: 'EASY', placedWords: ['LION', 'TIGER', 'BEAR'], grid: [['L','I','O']] },
+            { title: 'Animals #3', difficultyLabel: 'EASY', placedWords: ['WOLF', 'FOX', 'DEER'], grid: [['W','O','L']] },
+            { title: 'Animals #4', difficultyLabel: 'EASY', placedWords: ['FROG', 'TOAD', 'NEWT'], grid: [['F','R','O']] }
+        ];
+
+        const res = await buildCanvaWordSearchExcel({
+            puzzles,
+            puzzlesPerPage: 2,
+            solutionsPerPage: 2,
+            includeSolutionInSameExcel: true,
+            skipSeparateSolutions: true,
+            dateScope: 'per_page',
+            pageDateStrings: ['Jan 1, 2026', 'Jan 2, 2026'],
+            gridImages: ['data:image/png;base64,AAA', 'data:image/png;base64,AAA', 'data:image/png;base64,AAA', 'data:image/png;base64,AAA'],
+            solutionImages: ['data:image/png;base64,BBB', 'data:image/png;base64,BBB', 'data:image/png;base64,BBB', 'data:image/png;base64,BBB']
+        });
+
+        assert.equal(res.totalPages, 2, '4 puzzles at 2 games per page should produce 2 pages');
+        assert.equal(addedRows.length, 2, 'Should write 2 page rows to Canva Bulk sheet');
+        assert.equal(addedRows[0].puzzle_1_words_list, 'CAT, DOG, BIRD');
+        assert.equal(addedRows[0].puzzle_2_words_list, 'LION, TIGER, BEAR');
+        assert.equal(addedRows[0].date, 'Jan 1, 2026');
+        const colKeys = definedCols.map(c => c.key);
+        assert.ok(colKeys.includes('puzzle_1_solution') && colKeys.includes('puzzle_2_solution'), 'Linked solutions should appear in the same row for both games on the page');
+    } finally {
+        globalThis.window = prevWindow;
+    }
+});
+
 

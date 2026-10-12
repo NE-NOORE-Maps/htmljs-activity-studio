@@ -73,9 +73,14 @@ textarea { line-height: 1.65; }
 .preset-pill-btn.active { background: var(--primary-800); border-color: var(--primary-800); color: white; }
 .check-label { display: flex; gap: 9px; align-items: center; font-size: 12px; margin: -5px 0 24px; cursor: pointer; }
 input[type=checkbox], input[type=range] { accent-color: #245b43; }
-.advanced { border-top: 1px solid var(--border-subtle); margin-top: 20px; }
-.advanced summary { cursor: pointer; padding: 17px 0; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
-.details-body { padding: 4px 0 10px; }
+.advanced { border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface); margin-top: 14px; overflow: hidden; }
+.advanced summary { cursor: pointer; padding: 12px 14px; color: var(--text-primary); font-size: 12px; font-weight: 600; list-style: none; display: flex; align-items: center; justify-content: space-between; background: var(--bg-subtle); user-select: none; transition: background-color 0.15s ease; }
+.advanced summary::-webkit-details-marker { display: none; }
+.advanced summary::after { content: "▾"; font-size: 13px; color: var(--text-muted); transition: transform 0.2s ease; }
+.advanced:not([open]) summary::after { transform: rotate(-90deg); }
+.advanced summary:hover { background: var(--border-subtle); }
+.details-body { padding: 14px; border-top: 1px solid var(--border-subtle); }
+select:disabled, input:disabled { opacity: 0.72; cursor: not-allowed; background-color: var(--bg-subtle); }
 .step-actions { display: flex; justify-content: space-between; gap: 10px; padding-top: 20px; border-top: 1px solid var(--border-subtle); }
 .step-actions button { font-size: 12px; padding: 12px 15px; border-radius: 6px; }
 .step-actions #step-next { flex: 1; }
@@ -111,7 +116,7 @@ button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .export-buttons-grid button { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 14px; border-radius: 7px; text-align: left; }
 .export-buttons-grid button strong { font-size: 12px; font-weight: 600; }
 .export-buttons-grid button small { font-size: 10px; opacity: .85; font-weight: 400; line-height: 1.5; }
-#btn-export-pdf { grid-column: 1/-1; }
+#btn-export-canva { grid-column: 1/-1; }
 .book-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; background: var(--bg-subtle); border-radius: 8px; margin-bottom: 20px; }
 .book-facts dt { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
 .book-facts dd { font-size: 19px; font-family: var(--font-heading); margin: 0; }
@@ -144,7 +149,7 @@ button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .book-reading { grid-column: 2; grid-row: 2 / span 2; border-left: 1px solid var(--border-subtle); padding-left: 24px; }
 .settings-primary, .review-overview { grid-column: 1; }
 .settings-secondary, .review-downloads { grid-column: 2; border-left: 1px solid var(--border-subtle); padding-left: 24px; }
-#tab-styling > details { grid-column: 1; margin-top: 0; }
+#tab-rules > details, #tab-styling > details { grid-column: 1 / -1; margin-top: 8px; }
 .form-group { margin-bottom: 16px; }
 .check-label { margin-bottom: 0; }
 .section-label { margin-top: 0; }

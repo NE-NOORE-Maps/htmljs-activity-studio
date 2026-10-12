@@ -3,125 +3,52 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<script src="js/theme-init.js?v=pro9"></script>
+<script src="js/theme-init.js?v=pro10"></script>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>KDP Activity Studio Pro | Word Search &amp; Sudoku</title>
 <meta content="Professional client-side KDP Activity Book generator for Sudoku and Word Search. Exports 300 DPI PNGs, Canva Bulk Create Excel, and print-ready interior PDFs." name="description"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&amp;family=Outfit:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Baloo+2:wght@500;700&amp;family=Bubblegum+Sans&amp;family=Comic+Neue:wght@400;700&amp;family=Courier+Prime:wght@400;700&amp;family=Fredoka:wght@400;600;700&amp;family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600;700&amp;family=Lexend:wght@400;600;700&amp;family=Libre+Baskerville:wght@400;700&amp;family=Lora:wght@400;600;700&amp;family=Merriweather:wght@400;700&amp;family=Montserrat:wght@400;600;700&amp;family=Nunito:wght@400;600;700&amp;family=Open+Sans:wght@400;600;700&amp;family=Outfit:wght@400;500;600;700;800&amp;family=Patrick+Hand&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Quicksand:wght@500;700&amp;family=Roboto+Mono:wght@400;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
 <link href="css/style.css" rel="stylesheet"/>
 <script src="js/vendor/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<link href="css/studio-pro.css?v=pro9" rel="stylesheet"/></head>
+<link href="css/studio-pro.css?v=pro10" rel="stylesheet"/></head>
 <body><section aria-label="Supported screen size" class="screen-size-notice"><h2>Made for iPad and desktop</h2><p>Open the studio on an iPad or computer with a screen at least 768 pixels wide. Landscape gives you more room for your settings and preview.</p></section>
 <header class="studio-header">
 <div class="brand-wrapper">
 <div class="brand-logo">K</div>
 <div class="brand-text">
 <h1><span>KDP Activity Studio <span class="brand-badge">Pro</span></span></h1>
-<div class="brand-subtitle">From puzzle idea to published pages</div>
+<div class="brand-subtitle">Canva Bulk &amp; KDP Interior Generator</div>
 </div>
 </div>
 <div class="studio-tabs-nav"><button class="studio-tab-btn active" id="mode-wordsearch-btn">Word Search</button>
 <button class="studio-tab-btn" id="mode-sudoku-btn">Sudoku</button>
 </div>
 <div class="header-actions">
+<button class="btn-tiny" id="toggle-all-details-btn" title="Expand or collapse all option sections" type="button">⊟ Collapse sections</button>
 <button aria-label="Toggle color theme" class="icon-btn" id="theme-toggle-btn" title="Toggle Dark/Light Mode">🌙</button>
 <button aria-label="Shuffle puzzle layouts" class="icon-btn" id="new-book-btn" title="Shuffle puzzle layouts">↻</button>
 </div>
 </header>
 <main class="studio-layout">
-<aside class="studio-sidebar"><div class="workspace-intro"><h2>Your next puzzle book.</h2><p>Two settings panels. Your book always in view.</p></div>
-<nav aria-label="Book creation steps" class="sidebar-tabs"><button aria-controls="tab-volume" aria-current="step" class="sidebar-tab-btn active" data-tab="tab-volume"><span class="step-number">1</span><span class="step-copy"><strong>Book setup</strong><small>Choose your format</small></span></button><button aria-controls="tab-rules" aria-current="false" class="sidebar-tab-btn" data-tab="tab-rules"><span class="step-number">2</span><span class="step-copy"><strong>Puzzle content</strong><small>Build your collection</small></span></button><button aria-controls="tab-styling" aria-current="false" class="sidebar-tab-btn" data-tab="tab-styling"><span class="step-number">3</span><span class="step-copy"><strong>Page design</strong><small>Make it your own</small></span></button><button aria-controls="tab-review" aria-current="false" class="sidebar-tab-btn" data-tab="tab-review"><span class="step-number">4</span><span class="step-copy"><strong>Review &amp; export</strong><small>Prepare your interior</small></span></button></nav>
-<div class="sidebar-content"><div class="tab-panel active" id="tab-volume"><div class="step-heading"><h2>Start with your book</h2><p>Set the format and size of your collection.</p></div><div class="settings-column book-identity"><div class="form-group"><label for="book-title">Book title</label><input id="book-title" maxlength="120" required="" type="text" value="The Word Search Collection"/><p class="field-help">Appears on the interior title page.</p></div><label class="check-label"><input checked="" id="include-title-page" type="checkbox"/> Include an interior title page</label></div>
+<aside class="studio-sidebar"><div class="workspace-intro"><h2>Canva Bulk &amp; KDP Studio</h2><p>Import words, tune grids &amp; fonts, configure solutions, and export.</p></div>
+<nav aria-label="Book creation steps" class="sidebar-tabs"><button aria-controls="tab-volume" aria-current="step" class="sidebar-tab-btn active" data-tab="tab-volume"><span class="step-number">1</span><span class="step-copy"><strong>Words import</strong><small>Word list, CSV &amp; count</small></span></button><button aria-controls="tab-rules" aria-current="false" class="sidebar-tab-btn" data-tab="tab-rules"><span class="step-number">2</span><span class="step-copy"><strong>Words settings</strong><small>Words/page, grid &amp; date</small></span></button><button aria-controls="tab-styling" aria-current="false" class="sidebar-tab-btn" data-tab="tab-styling"><span class="step-number">3</span><span class="step-copy"><strong>Solution settings</strong><small>Games/page &amp; answers</small></span></button><button aria-controls="tab-review" aria-current="false" class="sidebar-tab-btn" data-tab="tab-review"><span class="step-number">4</span><span class="step-copy"><strong>Export</strong><small>Canva Bulk, ZIP &amp; PDF</small></span></button></nav>
+<div class="sidebar-content">
+
+<!-- ==================== STEP 1: WORDS IMPORT ==================== -->
+<div class="tab-panel active" id="tab-volume">
+<div class="step-heading"><h2>1. Words import &amp; puzzle count</h2><p>Paste your word list or import a Normal or Themed CSV. Puzzle count is calculated automatically.</p></div>
+
+<!-- SUDOKU STEP 1 -->
 <div class="control-section" id="sdk-volume-section">
-
-
-
-<div class="settings-column book-format"><div class="section-label">Book format</div><div class="form-group">
-<label for="sdk-trim-choice">Trim size</label>
-<select id="sdk-trim-choice">
-<option selected="" value="8.5 x 11 inches (Letter)">8.5 x 11 inches (Letter - Large format)</option>
-<option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
-<option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
-<option value="8 x 10 inches">8 x 10 inches</option>
-</select>
-</div><div class="form-group-stack">
+<div class="settings-column settings-primary">
+<div class="section-label">Sudoku game setup</div>
 <div class="form-group">
-<label for="sdk-count-input">Puzzle count <span class="hint" id="sdk-count-badge">50</span></label>
-<input id="sdk-count-input" max="5000" min="1" required="" type="number" value="50"/>
-</div>
-</div><div class="form-group">
-<label>Collection size</label>
-<div class="preset-pills">
-<button class="preset-pill-btn active" data-count="50">50</button>
-<button class="preset-pill-btn" data-count="100">100</button>
-<button class="preset-pill-btn" data-count="200">200</button>
-</div>
-</div></div><div class="settings-column book-reading"><div class="form-group"><label>Reading style</label><p class="field-help">Choose an appearance preset. Set puzzle difficulty in the next step.</p><div class="preset-pills" id="audience-preset-pills">
-<button class="preset-pill-btn active" data-preset="adult_classic">Adult classic</button>
-<button class="preset-pill-btn" data-preset="senior_large_print">Large print</button>
-<button class="preset-pill-btn" data-preset="checkerboard">Shaded blocks</button>
-<button class="preset-pill-btn" data-preset="kids_fun">Kids</button>
-<button class="preset-pill-btn" data-preset="modern_minimalist">Minimal</button>
-</div></div><details class="advanced"><summary>Numbering &amp; collection options</summary><div class="details-body"><div class="form-group">
-<label for="sdk-start-num">Start Number</label>
-<input id="sdk-start-num" max="9999" min="1" required="" type="number" value="1"/>
-</div></div></details></div></div>
-<div class="control-section" id="ws-volume-section" style="display:none;">
-
-
-
-<div class="settings-column book-format"><div class="section-label">Book format</div><div class="form-group">
-<label for="ws-trim-choice">Trim size</label>
-<select id="ws-trim-choice">
-<option selected="" value="8.5 x 11 inches (Letter)">8.5 x 11 inches (Letter - Large format)</option>
-<option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
-<option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
-<option value="8 x 10 inches">8 x 10 inches</option>
-</select>
-</div><div class="form-group-stack">
-<div class="form-group">
-<label for="ws-count-input">Puzzle count <span class="hint" id="ws-count-badge">50</span></label>
-<input id="ws-count-input" max="5000" min="1" required="" type="number" value="50"/>
-</div>
-</div><div class="form-group">
-<label>Collection size</label>
-<div class="preset-pills" id="ws-count-preset-pills">
-<button class="preset-pill-btn active" data-count="50">50</button>
-<button class="preset-pill-btn" data-count="100">100</button>
-<button class="preset-pill-btn" data-count="200">200</button>
-</div>
-</div></div><div class="settings-column book-reading"><div class="form-group"><label>Reading style</label><p class="field-help">Choose an appearance preset. Set puzzle difficulty in the next step.</p><div class="preset-pills" id="ws-audience-preset-pills">
-<button class="preset-pill-btn active" data-preset="adult_classic">Adult classic</button>
-<button class="preset-pill-btn" data-preset="senior_large_print">Large print</button>
-<button class="preset-pill-btn" data-preset="kids_activity">Kids</button>
-<button class="preset-pill-btn" data-preset="classroom_clean">Classroom</button>
-<button class="preset-pill-btn" data-preset="custom">Custom</button>
-</div></div><details class="advanced"><summary>Numbering &amp; collection options</summary><div class="details-body"><div class="form-group">
-<label for="ws-start-num">Start Number</label>
-<input id="ws-start-num" max="9999" min="1" required="" type="number" value="1"/>
-</div><div class="toggle-row">
-<div>
-<div class="toggle-label">Use exactly this puzzle count</div>
-<div class="toggle-sub">Reuse your word pool with new arrangements. Turn off to include every word group.</div>
-</div>
-<label class="switch">
-<input aria-label="Use exactly this puzzle count" checked="" id="ws-target-count-tog" type="checkbox"/>
-<span class="slider-switch"></span>
-</label>
-</div></div></details><p class="field-help" id="ws-theme-badge">Balanced type and a clean grid for everyday reading.</p></div></div>
-</div><div class="tab-panel" id="tab-rules"><div class="step-heading"><h2>Create your puzzles</h2><p>Choose the content and challenge for your readers.</p></div>
-<div class="control-section" id="sdk-rules-section">
-
-
-
-
-<div class="settings-column settings-primary"><div class="section-label">Variant &amp; difficulty</div><div class="form-group">
 <label for="sdk-type-select">Sudoku Game Type</label>
 <select id="sdk-type-select">
 <option selected="" value="classic_9x9">Classic 9×9</option>
@@ -131,10 +58,12 @@
 <option value="sudoku_x">Sudoku X (Diagonal)</option>
 <option value="windoku">Windoku (Hyper 4-Window)</option>
 </select>
-</div><div class="form-group" id="wordoku-group" style="display:none;">
+</div>
+<div class="form-group" id="wordoku-group" style="display:none;">
 <label for="sdk-wordoku-word">Wordoku Keyword Anagram (9 distinct letters)</label>
 <input id="sdk-wordoku-word" maxlength="9" type="text" value="PUBLISHER"/>
-</div><div class="form-group">
+</div>
+<div class="form-group">
 <label for="sdk-difficulty-select">Difficulty Tier</label>
 <select id="sdk-difficulty-select">
 <option value="very_easy">Very Easy (★☆☆☆☆)</option>
@@ -143,41 +72,39 @@
 <option value="hard">Hard (★★★★☆)</option>
 <option value="expert">Expert (★★★★★)</option>
 </select>
-</div></div><div class="settings-column settings-secondary"><details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
-<label for="sdk-seed-input">Random Seed</label>
-<input id="sdk-seed-input" required="" type="number" value="42"/>
-</div><div class="form-group">
-<label for="sdk-title-tpl">Title Template</label>
-<input id="sdk-title-tpl" type="text" value="Sudoku #{num}"/>
-</div><div class="toggle-row">
-<div>
-<div class="toggle-label">180° Rotational Symmetry</div>
-<div class="toggle-sub">Authentic newspaper &amp; publication clue balance</div>
 </div>
-<label class="switch">
-<input aria-label="180° Rotational Symmetry" checked="" id="sdk-symmetric-tog" type="checkbox"/>
-<span class="slider-switch"></span>
-</label>
-</div></div></details></div></div>
-<div class="control-section" id="ws-rules-section" style="display:none;">
+</div>
+<div class="settings-column settings-secondary">
+<div class="section-label">Puzzle count &amp; numbering</div>
+<div class="form-group-stack">
+<div class="form-group">
+<label for="sdk-count-input">Puzzle count <span class="hint" id="sdk-count-badge">50</span></label>
+<input id="sdk-count-input" max="5000" min="1" required="" type="number" value="50"/>
+</div>
+</div>
+<div class="form-group">
+<label>Quick count presets</label>
+<div class="preset-pills">
+<button class="preset-pill-btn active" data-count="50" type="button">50</button>
+<button class="preset-pill-btn" data-count="100" type="button">100</button>
+<button class="preset-pill-btn" data-count="200" type="button">200</button>
+<button class="preset-pill-btn" data-count="365" type="button">365</button>
+</div>
+</div>
+<details class="advanced" open=""><summary>Numbering &amp; collection options</summary><div class="details-body">
+<div class="form-group">
+<label for="sdk-start-num">Start Number</label>
+<input id="sdk-start-num" max="9999" min="1" required="" type="number" value="1"/>
+</div>
+</div></details>
+</div>
+</div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="settings-column settings-primary"><div class="section-label">Language</div><div class="form-group-stack">
+<!-- WORD SEARCH STEP 1 -->
+<div class="control-section" id="ws-volume-section" style="display:none;">
+<div class="settings-column settings-primary">
+<div class="section-label">Language &amp; word input source</div>
+<div class="form-group-stack">
 <div class="form-group">
 <label for="ws-lang-select">Puzzle Language</label>
 <select id="ws-lang-select">
@@ -188,142 +115,155 @@
 <option value="Italian (Italiano)">🇮🇹 Italian (Italiano)</option>
 </select>
 </div>
-</div><div class="lang-badge" id="ws-lang-badge">
-                            🇬🇧 <b>English</b>: Standard Latin alphabet (A–Z).
-                        </div><div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
-</div><div class="section-label" style="margin-top:0.9rem;">Words import &amp; list</div><div class="form-group">
-<label>Word Input Source</label>
-<div class="preset-pills" id="ws-source-pills">
-<button class="preset-pill-btn active" data-source="paste" id="ws-src-paste-btn" type="button">Paste words</button>
-<button class="preset-pill-btn" data-source="csv" id="ws-src-csv-btn" type="button">Import CSV</button>
 </div>
-</div><div class="form-group-stack">
+<div class="lang-badge" id="ws-lang-badge">
+🇬🇧 <b>English</b>: Standard Latin alphabet (A–Z).
+</div>
+<div class="form-group" style="margin-top:0.75rem;">
+<label>Word Input Mode</label>
+<div class="preset-pills" id="ws-source-pills">
+<button class="preset-pill-btn active" data-source="paste" id="ws-src-paste-btn" type="button">📝 Paste word list</button>
+<button class="preset-pill-btn" data-source="csv-simple" id="ws-src-csv-btn" type="button">📄 Normal CSV (word)</button>
+<button class="preset-pill-btn" data-source="csv-themed" id="ws-src-csv-themed-btn" type="button">🗂️ Themed CSV (theme,word)</button>
+</div>
+</div>
+<div class="form-group-stack" id="ws-theme-title-group">
 <div class="form-group">
-<label for="ws-theme-input">Theme / Puzzle Title</label>
+<label for="ws-theme-input">Default Theme / Puzzle Title</label>
 <input id="ws-theme-input" type="text" value="Animals"/>
 </div>
-</div><div class="file-drop-area" id="ws-csv-dropzone" role="button" tabindex="0" aria-label="Upload a CSV word list" style="display:none;">
+</div>
+<div aria-label="Upload a CSV word list" class="file-drop-area" id="ws-csv-dropzone" role="button" style="display:none;" tabindex="0">
 <div class="file-drop-icon">📄</div>
 <div class="file-drop-text" id="ws-csv-file-label">Click or Drag &amp; Drop CSV here</div>
-<div class="file-drop-sub">Supports 'theme,word' (multi-theme) or single-column 'word'</div>
+<div class="file-drop-sub" id="ws-csv-mode-hint">Supports single-column 'word' or multi-theme 'theme,word'</div>
 <input accept=".csv" id="ws-csv-file-input" style="display:none;" type="file"/>
-</div><div class="form-group" id="ws-textarea-group">
+</div>
+<div class="form-group" id="ws-textarea-group">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
 <label for="ws-word-list-input">Word List (One per line or semicolon-separated)</label>
 <span class="hint" id="ws-word-count-badge">12 words</span>
 </div>
-<textarea id="ws-word-list-input" rows="5" style="width:100%; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.6rem; font-family:var(--font-mono); font-size:0.82rem; background:var(--bg-main); color:var(--text-primary); resize:vertical;"></textarea>
-</div><div class="summary-card" id="ws-summary-card">
+<textarea id="ws-word-list-input" rows="6" style="width:100%; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.6rem; font-family:var(--font-mono); font-size:0.82rem; background:var(--bg-main); color:var(--text-primary); resize:vertical;"></textarea>
+</div>
+<div class="summary-card" id="ws-summary-card">
 <span class="summary-title" id="ws-summary-text">1 theme · 12 valid words</span>
 <span class="summary-sub" id="ws-sample-tag">Built-in Sample</span>
-</div><details class="advanced" style="margin-top:0.6rem;"><summary>Sample files &amp; writing prompts</summary><div class="details-body"><div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="btn-tiny" id="ws-reset-sample-btn" title="Reset theme &amp; sample word list to default for active language">Restore sample words</button><button class="btn-tiny" id="ws-down-themed-csv" style="flex:1;" type="button">📥 Themed CSV Sample</button><button class="btn-tiny" id="ws-down-simple-csv" style="flex:1;" type="button">📥 Simple CSV Sample</button></div><div class="expander-box" id="ws-ai-expander" style="margin-top:0.6rem;">
-<button aria-expanded="false" class="expander-header" id="ws-ai-expander-hdr" type="button">
+</div>
+</div>
+
+<div class="settings-column settings-secondary">
+<div class="section-label">Automatic puzzle count</div>
+<div class="summary-card" id="ws-auto-calc-card" style="margin-bottom:0.75rem;">
+<div>
+<div class="summary-title" id="ws-auto-count-formula">Auto-calculated: 12 words ÷ 12 words/page = 1 puzzle</div>
+<div class="summary-sub" id="ws-auto-count-sub">Updates automatically from your imported CSV or word list divided by words per page.</div>
+</div>
+</div>
+<div class="form-group-stack">
+<div class="form-group">
+<label for="ws-count-input">Total puzzles <span class="hint" id="ws-count-badge">1</span></label>
+<input id="ws-count-input" max="5000" min="1" required="" type="number" value="1"/>
+</div>
+</div>
+<div class="form-group">
+<label>Manual count presets (optional override)</label>
+<div class="preset-pills" id="ws-count-preset-pills">
+<button class="preset-pill-btn" data-count="auto" id="ws-count-auto-btn" type="button">✨ Auto from words</button>
+<button class="preset-pill-btn" data-count="50" type="button">50</button>
+<button class="preset-pill-btn" data-count="100" type="button">100</button>
+<button class="preset-pill-btn" data-count="200" type="button">200</button>
+</div>
+</div>
+<details class="advanced" open=""><summary>Numbering &amp; collection options</summary><div class="details-body">
+<div class="form-group">
+<label for="ws-start-num">Start Number</label>
+<input id="ws-start-num" max="9999" min="1" required="" type="number" value="1"/>
+</div>
+<div class="toggle-row">
+<div>
+<div class="toggle-label">Override automatic puzzle count</div>
+<div class="toggle-sub">Off: puzzle count is calculated automatically (total words ÷ words per page, or per CSV theme). On: force exact manual puzzle count.</div>
+</div>
+<label class="switch">
+<input aria-label="Override automatic puzzle count" id="ws-target-count-tog" type="checkbox"/>
+<span class="slider-switch"></span>
+</label>
+</div>
+</div></details>
+
+<details class="advanced" open="" style="margin-top:0.6rem;"><summary>Sample files &amp; AI writing prompts</summary><div class="details-body">
+<div style="display:flex; gap:6px; flex-wrap:wrap;">
+<button class="btn-tiny" id="ws-reset-sample-btn" title="Reset theme &amp; sample word list to default for active language" type="button">Restore sample words</button>
+<button class="btn-tiny" id="ws-down-themed-csv" style="flex:1;" type="button">📥 Themed CSV Sample</button>
+<button class="btn-tiny" id="ws-down-simple-csv" style="flex:1;" type="button">📥 Normal CSV Sample</button>
+</div>
+<div class="expander-box" id="ws-ai-expander" style="margin-top:0.6rem;">
+<button aria-expanded="true" class="expander-header" id="ws-ai-expander-hdr" type="button">
 <span>🤖 AI Prompts for ChatGPT / Claude</span>
-<span id="ws-ai-exp-icon">▼</span>
+<span id="ws-ai-exp-icon">▲</span>
 </button>
-<div class="expander-content" id="ws-ai-expander-body">
+<div class="expander-content open" id="ws-ai-expander-body">
 <div class="form-group">
 <label for="ws-prompt-type-sel">Prompt Template</label>
 <select id="ws-prompt-type-sel">
 <option value="Themed CSV">Themed CSV (10 themes × 12 words)</option>
-<option value="Simple CSV">Simple CSV (Single word column)</option>
+<option value="Simple CSV">Normal CSV (Single word column)</option>
 <option value="Pasted word list">Pasted Word List</option>
 </select>
 </div>
 <div class="code-box" id="ws-prompt-code-box"></div>
 <button class="btn-tiny" id="ws-copy-prompt-btn" style="align-self:flex-start;" type="button">📋 Copy Prompt</button>
 </div>
-</div></div></details></div><div class="settings-column settings-secondary"><div class="section-label" style="margin-top:0.9rem;">Words &amp; grid settings</div><div class="form-row-2">
+</div>
+</div></details>
+</div>
+</div>
+</div>
+
+<!-- ==================== STEP 2: WORDS SETTINGS ==================== -->
+<div class="tab-panel" id="tab-rules">
+<div class="step-heading"><h2>2. Words, grid, fonts &amp; date settings</h2><p>Set words per puzzle, customize your grid &amp; commercial-free fonts, and optionally add dates.</p></div>
+
+<!-- SUDOKU STEP 2 -->
+<div class="control-section" id="sdk-rules-section">
+<div class="settings-column settings-primary">
+<div class="section-label">Audience style &amp; puzzle options</div>
 <div class="form-group">
-<label for="ws-grid-dim-select">Grid Dimensions</label>
-<select id="ws-grid-dim-select">
-<option value="10x10">10 × 10 (Kids / Compact)</option>
-<option value="12x10">12 × 10 (Activity Book)</option>
-<option value="12x12">12 × 12 (Junior)</option>
-<option value="13x13">13 × 13 (Medium)</option>
-<option value="14x14">14 × 14 (Standard KDP)</option>
-<option value="15x15">15 × 15 (Classic Newspaper)</option>
-<option value="16x16">16 × 16 (Challenging)</option>
-<option selected="" value="auto">Automatic · based on difficulty</option>
-<option value="custom">Custom (Rows × Cols)...</option>
-</select>
+<label>Reading style preset</label>
+<div class="preset-pills" id="audience-preset-pills">
+<button class="preset-pill-btn active" data-preset="adult_classic" type="button">Adult classic</button>
+<button class="preset-pill-btn" data-preset="senior_large_print" type="button">Large print</button>
+<button class="preset-pill-btn" data-preset="checkerboard" type="button">Shaded blocks</button>
+<button class="preset-pill-btn" data-preset="kids_fun" type="button">Kids</button>
+<button class="preset-pill-btn" data-preset="modern_minimalist" type="button">Minimal</button>
+</div>
+</div>
+<details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body">
+<div class="form-group">
+<label for="sdk-seed-input">Random Seed</label>
+<input id="sdk-seed-input" required="" type="number" value="42"/>
 </div>
 <div class="form-group">
-<label for="ws-difficulty-select">Difficulty Tier</label>
-<select id="ws-difficulty-select">
-<option value="easy">Easy (→ ↓ Forward Only)</option>
-<option selected="" value="medium">Medium (→ ↓ ↘ ↗ Forward &amp; Diag)</option>
-<option value="hard">Hard (All 8 Directions + Reverse)</option>
-</select>
+<label for="sdk-title-tpl">Title Template</label>
+<input id="sdk-title-tpl" type="text" value="Sudoku #{num}"/>
 </div>
-</div><div class="form-row-2" id="ws-custom-dims-row" style="display:none;">
-<div class="form-group">
-<label for="ws-cust-rows">Rows (Height) <span class="hint" id="ws-cust-rows-val">12</span></label>
-<input id="ws-cust-rows" max="25" min="6" step="1" type="range" value="12"/>
-</div>
-<div class="form-group">
-<label for="ws-cust-cols">Columns (Width) <span class="hint" id="ws-cust-cols-val">10</span></label>
-<input id="ws-cust-cols" max="25" min="6" step="1" type="range" value="10"/>
-</div>
-</div><div class="form-group">
-<label for="ws-words-per-page-slider">Words Per Page <span class="hint" id="ws-words-per-page-val">12</span></label>
-<input id="ws-words-per-page-slider" max="30" min="4" step="1" type="range" value="12"/>
-</div><div class="summary-card" id="ws-capacity-card" style="margin-top:0.4rem;">
+<div class="toggle-row">
 <div>
-<div class="summary-title" id="ws-capacity-dim-text">12 Rows × 10 Columns (120 cells)</div>
-<div class="summary-sub" id="ws-capacity-sub-text">Suggested capacity: ~9 words per page · Rectangular layout</div>
-</div>
-</div><details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body"><div class="form-group">
-<label for="ws-seed-input">Random Seed</label>
-<div style="display:flex; gap:6px;">
-<input id="ws-seed-input" required="" style="flex:1;" type="number" value="42"/>
-<button class="btn-tiny" id="ws-shuffle-seed-btn" style="padding:0 12px;" title="Shuffle seed to rearrange letters">🎲 Shuffle</button>
-</div>
-</div><div class="form-group">
-<label for="ws-accent-mode-sel">Accents &amp; Diacritics</label>
-<select id="ws-accent-mode-sel">
-<option selected="" value="Standard Book Mode">Standard Book Mode</option>
-<option value="Preserve Exact Accents">Preserve Exact Accents</option>
-<option value="Strip All Accents (A-Z)">Strip All Accents (A-Z)</option>
-</select>
-</div></div></details></div></div>
-</div><div class="tab-panel" id="tab-styling"><div class="step-heading"><h2>Design the reading experience</h2><p>Balance readable puzzles with a comfortable page layout.</p></div>
-<div class="control-section" id="sdk-styling-section">
-<div class="settings-column settings-primary"><div class="layout-controls"><div class="section-label">Puzzle page layout</div><div class="form-group">
-<label for="sdk-puz-per-page">Puzzles per page</label>
-<select id="sdk-puz-per-page">
-<option selected="" value="1">1 game / page (Large Print)</option>
-<option value="2">2 games / page (KDP standard)</option>
-<option value="4">4 games / page (Compact 2x2)</option>
-<option value="6">6 games / page (Dense 2x3)</option>
-</select>
-</div><div class="toggle-row">
-<div>
-<div class="toggle-label">Include Rules / Instructions</div>
-<div class="toggle-sub">Draws concise solver instructions on book page</div>
+<div class="toggle-label">180° Rotational Symmetry</div>
+<div class="toggle-sub">Authentic newspaper &amp; publication clue balance</div>
 </div>
 <label class="switch">
-<input aria-label="Include Rules / Instructions" checked="" id="sdk-instructions-tog" type="checkbox"/>
+<input aria-label="180° Rotational Symmetry" checked="" id="sdk-symmetric-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
-</div><div class="section-label" style="margin-top:1.25rem;">Solution settings &amp; layout</div><div class="form-group">
-<label for="sdk-sol-per-page">Answers per page</label>
-<select id="sdk-sol-per-page">
-<option value="1">1 solution / page</option>
-<option value="2">2 solutions / page</option>
-<option value="3">3 solutions / page</option>
-<option value="4">4 solutions / page</option>
-<option selected="" value="6">6 solutions / page</option>
-<option value="9">9 solutions / page</option>
-</select>
-</div><div class="form-group">
-<label for="sdk-solution-mode">Solution Mark Mode</label>
-<select id="sdk-solution-mode">
-<option selected="" value="color">Distinct Royal Blue Color</option>
-<option value="circled">Circled Solved Cells</option>
-<option value="normal">Same as Clue Color</option>
-</select>
-</div></div></div><div class="settings-column settings-secondary"><details class="advanced"><summary>Customize typography &amp; grid</summary><div class="details-body"><div class="form-row-2">
+</div>
+</div></details>
+</div>
+
+<div class="settings-column settings-secondary">
+<details class="advanced" open=""><summary>Customize typography &amp; grid</summary><div class="details-body">
+<div class="form-row-2">
 <div class="form-group">
 <label for="sdk-cell-style">Cell Style</label>
 <select id="sdk-cell-style">
@@ -341,7 +281,43 @@
 <option value="windows">4 Windows (Windoku)</option>
 </select>
 </div>
-</div><div class="form-row-3">
+</div>
+<div class="form-group">
+<label for="sdk-clue-font-sel">Digit Font (100% Free Commercial Use)</label>
+<select id="sdk-clue-font-sel">
+<optgroup label="👓 Senior &amp; Large Print (High Legibility)">
+<option value="'Atkinson Hyperlegible', sans-serif">Atkinson Hyperlegible (Low-Vision Gold Standard)</option>
+<option value="'Lexend', sans-serif">Lexend (Reading Fluency Sans)</option>
+<option value="'Montserrat', sans-serif">Montserrat (Bold Geometric Print)</option>
+<option value="'Nunito', sans-serif">Nunito (Warm Rounded Large Print)</option>
+<option value="'Open Sans', sans-serif">Open Sans (Clean Humanist Sans)</option>
+</optgroup>
+<optgroup label="📖 Adult &amp; Classic Editorial">
+<option selected="" value="'Outfit', sans-serif">Outfit (Modern Studio Sans)</option>
+<option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (Contemporary Editorial)</option>
+<option value="'Inter', sans-serif">Inter (Crisp Neutral Sans)</option>
+<option value="'Merriweather', serif">Merriweather (Classic Book Serif)</option>
+<option value="'Lora', serif">Lora (Literary Editorial Serif)</option>
+<option value="'Libre Baskerville', serif">Libre Baskerville (Traditional Print Serif)</option>
+<option value="Georgia, serif">Georgia (Newspaper Serif)</option>
+</optgroup>
+<optgroup label="🧒 Kids &amp; Activity (Friendly &amp; Rounded)">
+<option value="'Fredoka', sans-serif">Fredoka (Playful Rounded)</option>
+<option value="'Baloo 2', sans-serif">Baloo 2 (Bouncy Activity Book)</option>
+<option value="'Quicksand', sans-serif">Quicksand (Soft Geometric)</option>
+<option value="'Comic Neue', cursive">Comic Neue (Dyslexia-Friendly Classroom)</option>
+<option value="'Patrick Hand', cursive">Patrick Hand (Neat Handwritten)</option>
+<option value="'Bubblegum Sans', cursive">Bubblegum Sans (Fun Cartoon)</option>
+</optgroup>
+<optgroup label="⌨️ Technical &amp; Monospace">
+<option value="'JetBrains Mono', monospace">JetBrains Mono (Crisp Code Grid)</option>
+<option value="'Roboto Mono', monospace">Roboto Mono (Clean Technical)</option>
+<option value="'Space Mono', monospace">Space Mono (Retro Typewriter)</option>
+<option value="'Courier Prime', monospace">Courier Prime (Classic Slab Mono)</option>
+</optgroup>
+</select>
+</div>
+<div class="form-row-3">
 <div class="form-group">
 <label for="sdk-outer-lw">Outer Frame (mm)</label>
 <input id="sdk-outer-lw" max="4.0" min="0.5" required="" step="0.1" type="number" value="1.4"/>
@@ -354,54 +330,112 @@
 <label for="sdk-inner-lw">Inner Cell (mm)</label>
 <input id="sdk-inner-lw" max="2.0" min="0.2" required="" step="0.1" type="number" value="0.4"/>
 </div>
-</div><div class="form-group">
+</div>
+<div class="form-group">
 <label for="sdk-font-scale">Digit Scale (% of cell)</label>
 <input id="sdk-font-scale" max="95" min="40" required="" type="number" value="64"/>
-</div></div></details></div></div>
-<div class="control-section" id="ws-styling-section" style="display:none;">
-<div class="settings-column settings-primary"><div class="layout-controls"><div class="section-label">Puzzle page layout</div><div class="form-group">
-<label for="ws-word-cols-select">Word Bank Columns</label>
-<select id="ws-word-cols-select">
-<option value="1">1 Column</option>
-<option value="2">2 Columns</option>
-<option selected="" value="3">3 Columns (Balanced)</option>
-<option value="4">4 Columns (Compact)</option>
-<option value="5">5 Columns</option>
-</select>
-</div><div class="toggle-row" style="margin-top:1.25rem;">
-<div>
-<div class="toggle-label">Display Word Bank</div>
 </div>
-<label class="switch">
-<input aria-label="Display Word Bank" checked="" id="ws-show-bank-tog" type="checkbox"/>
-<span class="slider-switch"></span>
-</label>
-</div><div class="section-label" style="margin-top:1.25rem;">Solution settings &amp; layout</div><div class="form-group">
-<label for="ws-sol-per-page">Answers per page</label>
-<select id="ws-sol-per-page">
-<option value="1">1 solution / page (Giant Print)</option>
-<option value="2">2 solutions / page</option>
-<option value="3">3 solutions / page</option>
-<option selected="" value="4">4 solutions / page (Standard KDP)</option>
-<option value="6">6 solutions / page (Compact)</option>
+</div></details>
+</div>
+</div>
+
+<!-- WORD SEARCH STEP 2 -->
+<div class="control-section" id="ws-rules-section" style="display:none;">
+<div class="settings-column settings-primary">
+<div class="section-label">Words per puzzle &amp; grid dimensions</div>
+<div class="form-group">
+<label for="ws-words-per-page-slider">Words Per Puzzle (Words / Game) <span class="hint" id="ws-words-per-page-val">12</span></label>
+<input id="ws-words-per-page-slider" max="30" min="4" step="1" type="range" value="12"/>
+<p class="field-help">Controls how many words are placed in each puzzle and automatically recalculates total puzzles.</p>
+</div>
+<div class="form-row-2">
+<div class="form-group">
+<label for="ws-grid-dim-select">Grid Dimensions</label>
+<select id="ws-grid-dim-select">
+<option value="10x10">10 × 10 (Kids / Compact)</option>
+<option value="12x10">12 × 10 (Activity Book)</option>
+<option value="12x12">12 × 12 (Junior)</option>
+<option value="13x13">13 × 13 (Medium)</option>
+<option value="14x14">14 × 14 (Standard KDP)</option>
+<option value="15x15">15 × 15 (Classic Newspaper)</option>
+<option value="16x16">16 × 16 (Challenging)</option>
+<option value="18x18">18 × 18 (Large Enthusiast)</option>
+<option value="20x20">20 × 20 (Giant Master)</option>
+<option selected="" value="auto">Automatic · based on difficulty</option>
+<option value="custom">Custom (Rows × Cols)...</option>
 </select>
-</div><div class="form-group">
-<label for="ws-sol-style-sel">Solution Marker Style</label>
-<select id="ws-sol-style-sel">
-<option selected="" value="capsule">Capsule / Pill Highlighter</option>
-<option value="box">Box Outline</option>
-<option value="bold">Bold Letters</option>
+</div>
+<div class="form-group">
+<label for="ws-difficulty-select">Difficulty Tier</label>
+<select id="ws-difficulty-select">
+<option value="easy">Easy (→ ↓ Forward Only)</option>
+<option selected="" value="medium">Medium (→ ↓ ↘ ↗ Forward &amp; Diag)</option>
+<option value="hard">Hard (All 8 Directions + Reverse)</option>
 </select>
-</div></div></div><div class="settings-column settings-secondary"><details class="advanced"><summary>Customize typography &amp; grid</summary><div class="details-body"><div class="form-group">
-<label for="ws-cell-style-sel">Cell Line Style</label>
+</div>
+</div>
+<div class="form-row-2" id="ws-custom-dims-row" style="display:none;">
+<div class="form-group">
+<label for="ws-cust-rows">Rows (Height) <span class="hint" id="ws-cust-rows-val">12</span></label>
+<input id="ws-cust-rows" max="25" min="6" step="1" type="range" value="12"/>
+</div>
+<div class="form-group">
+<label for="ws-cust-cols">Columns (Width) <span class="hint" id="ws-cust-cols-val">10</span></label>
+<input id="ws-cust-cols" max="25" min="6" step="1" type="range" value="10"/>
+</div>
+</div>
+<div class="summary-card" id="ws-capacity-card" style="margin-top:0.4rem;">
+<div>
+<div class="summary-title" id="ws-capacity-dim-text">12 Rows × 10 Columns (120 cells)</div>
+<div class="summary-sub" id="ws-capacity-sub-text">Suggested capacity: ~9 words per puzzle · Rectangular layout</div>
+</div>
+</div>
+<details class="advanced" open=""><summary>Advanced puzzle settings</summary><div class="details-body">
+<div class="form-group">
+<label for="ws-seed-input">Random Seed</label>
+<div style="display:flex; gap:6px;">
+<input id="ws-seed-input" required="" style="flex:1;" type="number" value="42"/>
+<button class="btn-tiny" id="ws-shuffle-seed-btn" style="padding:0 12px;" title="Shuffle seed to rearrange letters" type="button">🎲 Shuffle</button>
+</div>
+</div>
+<div class="form-group">
+<label for="ws-accent-mode-sel">Accents &amp; Diacritics</label>
+<select id="ws-accent-mode-sel">
+<option selected="" value="Standard Book Mode">Standard Book Mode</option>
+<option value="Preserve Exact Accents">Preserve Exact Accents</option>
+<option value="Strip All Accents (A-Z)">Strip All Accents (A-Z)</option>
+</select>
+</div>
+</div></details>
+</div>
+
+<div class="settings-column settings-secondary">
+<div class="section-label">Grid style &amp; categorized fonts</div>
+<div class="form-group">
+<label>Audience style preset</label>
+<div class="preset-pills" id="ws-audience-preset-pills">
+<button class="preset-pill-btn active" data-preset="adult_classic" type="button">Adult classic</button>
+<button class="preset-pill-btn" data-preset="senior_large_print" type="button">Large print</button>
+<button class="preset-pill-btn" data-preset="kids_activity" type="button">Kids</button>
+<button class="preset-pill-btn" data-preset="classroom_clean" type="button">Classroom</button>
+<button class="preset-pill-btn" data-preset="custom" type="button">Custom</button>
+</div>
+<p class="field-help" id="ws-theme-badge">Balanced type and a clean grid for everyday reading.</p>
+</div>
+<details class="advanced" open=""><summary>Customize typography &amp; grid</summary><div class="details-body">
+<div class="form-group">
+<label for="ws-cell-style-sel">Grid Cell Style</label>
 <select id="ws-cell-style-sel">
 <option selected="" value="grid">Classic Grid Lines</option>
-<option value="boxes">Separated Cell Boxes</option>
-<option value="rounded_boxes">Rounded Cell Boxes (Kids Style)</option>
-<option value="outer_border">Outer Border Only</option>
-<option value="none">None (No Lines / Floating Letters)</option>
+<option value="boxes">Separated Square Boxes</option>
+<option value="rounded_boxes">Rounded Cell Tiles (Kids Style)</option>
+<option value="circles">Letter Circles / Bubbles</option>
+<option value="dotted">Minimalist Dotted Grid</option>
+<option value="outer_border">Outer Border Frame Only</option>
+<option value="none">None (Floating Letters Only)</option>
 </select>
-</div><div class="form-row-2">
+</div>
+<div class="form-row-2">
 <div class="form-group">
 <label for="ws-line-color-sel">Grid Line Color</label>
 <select id="ws-line-color-sel">
@@ -417,16 +451,43 @@
 <label for="ws-line-width-input">Line Thickness (mm) <span class="hint" id="ws-line-w-val">0.6mm</span></label>
 <input id="ws-line-width-input" max="2.5" min="0.0" step="0.1" type="range" value="0.6"/>
 </div>
-</div><div class="form-row-2">
+</div>
 <div class="form-group">
-<label for="ws-letter-font-sel">Letter Font</label>
+<label for="ws-letter-font-sel">Letter Font (100% Free Commercial Use)</label>
 <select id="ws-letter-font-sel">
-<option selected="" value="'Outfit', sans-serif">Modern Sans (Outfit)</option>
-<option value="'Plus Jakarta Sans', sans-serif">Clean Sans (Jakarta)</option>
-<option value="Georgia, serif">Classic Book Serif</option>
-<option value="'JetBrains Mono', monospace">Monospace (Code / Retro)</option>
+<optgroup label="🧒 Kids &amp; Activity (Friendly &amp; Rounded)">
+<option value="'Fredoka', sans-serif">Fredoka (Playful Rounded)</option>
+<option value="'Baloo 2', sans-serif">Baloo 2 (Bouncy Activity Book)</option>
+<option value="'Quicksand', sans-serif">Quicksand (Soft Geometric)</option>
+<option value="'Comic Neue', cursive">Comic Neue (Dyslexia-Friendly Classroom)</option>
+<option value="'Patrick Hand', cursive">Patrick Hand (Neat Handwritten)</option>
+<option value="'Bubblegum Sans', cursive">Bubblegum Sans (Fun Cartoon)</option>
+</optgroup>
+<optgroup label="👓 Senior &amp; Large Print (High Legibility)">
+<option value="'Atkinson Hyperlegible', sans-serif">Atkinson Hyperlegible (Low-Vision Gold Standard)</option>
+<option value="'Lexend', sans-serif">Lexend (Reading Fluency Sans)</option>
+<option value="'Montserrat', sans-serif">Montserrat (Bold Geometric Print)</option>
+<option value="'Nunito', sans-serif">Nunito (Warm Rounded Large Print)</option>
+<option value="'Open Sans', sans-serif">Open Sans (Clean Humanist Sans)</option>
+</optgroup>
+<optgroup label="📖 Adult &amp; Classic Editorial">
+<option selected="" value="'Outfit', sans-serif">Outfit (Modern Studio Sans)</option>
+<option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (Contemporary Editorial)</option>
+<option value="'Inter', sans-serif">Inter (Crisp Neutral Sans)</option>
+<option value="'Merriweather', serif">Merriweather (Classic Book Serif)</option>
+<option value="'Lora', serif">Lora (Literary Editorial Serif)</option>
+<option value="'Libre Baskerville', serif">Libre Baskerville (Traditional Print Serif)</option>
+<option value="Georgia, serif">Georgia (Newspaper Serif)</option>
+</optgroup>
+<optgroup label="⌨️ Technical &amp; Monospace">
+<option value="'JetBrains Mono', monospace">JetBrains Mono (Crisp Code Grid)</option>
+<option value="'Roboto Mono', monospace">Roboto Mono (Clean Technical)</option>
+<option value="'Space Mono', monospace">Space Mono (Retro Typewriter)</option>
+<option value="'Courier Prime', monospace">Courier Prime (Classic Slab Mono)</option>
+</optgroup>
 </select>
 </div>
+<div class="form-row-2">
 <div class="form-group">
 <label for="ws-letter-color-sel">Letter Color</label>
 <select id="ws-letter-color-sel">
@@ -438,17 +499,23 @@
 </select>
 <input id="ws-custom-letter-hex" placeholder="#202A26" style="display:none; margin-top:4px;" type="text"/>
 </div>
-</div><div class="form-group">
+<div class="form-group">
 <label for="ws-font-scale-slider">Letter Font Size (% of cell) <span class="hint" id="ws-font-scale-val">62%</span></label>
 <input id="ws-font-scale-slider" max="88" min="50" step="2" type="range" value="62"/>
-</div></div></details></div></div>
-<details class="advanced"><summary>Optional dates &amp; calendars</summary><div class="details-body"><div class="calendar-settings" id="tab-date">
+</div>
+</div>
+</div></details>
+</div>
+</div>
+
+<!-- SHARED DATE & CALENDAR SCHEDULING (WORD SEARCH & SUDOKU) -->
+<details class="advanced" open="" style="margin-top:0.85rem;"><summary>Optional dates &amp; calendars (Word Search &amp; Sudoku)</summary><div class="details-body"><div class="calendar-settings" id="tab-date">
 <div class="control-section">
 <div class="section-label">📅 Date &amp; Calendar Scheduling</div>
 <div class="toggle-row">
 <div>
 <div class="toggle-label">Enable Date / Calendar Headers</div>
-<div class="toggle-sub">Assign dates or 300 DPI mini month calendar cards</div>
+<div class="toggle-sub">Include formatted dates or 300 DPI mini month calendar cards in Canva Bulk Excel, ZIP &amp; PDF</div>
 </div>
 <label class="switch">
 <input aria-label="Enable Date / Calendar Headers" id="sdk-date-enabled-tog" type="checkbox"/>
@@ -487,14 +554,14 @@
 <button class="preset-pill-btn" data-scope="per_page" id="scope-per-page-btn" type="button">📖 1 Date Per Page</button>
 </div>
 <div class="toggle-sub" id="date-scope-desc" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
-                                    Each puzzle slot receives its own sequential calendar date.
-                                </div>
+Each puzzle slot receives its own sequential calendar date.
+</div>
 </div>
 <div class="form-group">
 <label>Display Mode</label>
 <div class="preset-pills">
-<button class="preset-pill-btn active" id="disp-text-btn">📝 Formatted Date Text</button>
-<button class="preset-pill-btn" id="disp-card-btn">🗓️ Mini Month Calendar Card</button>
+<button class="preset-pill-btn active" id="disp-text-btn" type="button">📝 Formatted Date Text</button>
+<button class="preset-pill-btn" id="disp-card-btn" type="button">🗓️ Mini Month Calendar Card</button>
 </div>
 </div>
 <div class="form-group" id="date-fmt-group">
@@ -548,27 +615,206 @@
 </div>
 </div>
 </div>
-</div></div></details></div>
-<div class="tab-panel" id="tab-review"><div class="step-heading"><h2>Review your book</h2><p>Check your interior before downloading.</p></div><div class="settings-column review-overview"><div aria-live="polite" id="book-review"></div><div id="review-checks"></div><p class="review-note">For black ink on white paper, with no bleed. Review the PDF in Amazon’s Print Previewer before publishing.</p><a class="quiet-link" href="https://kdp.amazon.com/en_US/help/topic/G201857950" rel="noopener" target="_blank">Amazon paperback guidelines ↗</a></div><div class="settings-column review-downloads"><div data-studio="sudoku"><div class="canva-options-card"><div class="section-label">Canva &amp; Excel workbook settings</div><div class="toggle-row">
+</div></div></details>
+</div>
+
+<!-- ==================== STEP 3: SOLUTION SETTINGS ==================== -->
+<div class="tab-panel" id="tab-styling">
+<div class="step-heading"><h2>3. Games per page &amp; solution settings</h2><p>Select games per page, then choose whether solutions are paired with puzzles or exported separately (up to 9 per page).</p></div>
+
+<!-- SUDOKU STEP 3 -->
+<div class="control-section" id="sdk-styling-section">
+<div class="settings-column settings-primary">
+<div class="layout-controls">
+<div class="section-label">Games per page</div>
+<div class="form-group">
+<label for="sdk-puz-per-page">Sudoku games per page</label>
+<select id="sdk-puz-per-page">
+<option selected="" value="1">1 game / page (Large Print)</option>
+<option value="2">2 games / page (KDP standard)</option>
+<option value="4">4 games / page (Compact 2×2)</option>
+<option value="6">6 games / page (Dense 2×3)</option>
+</select>
+</div>
+<div class="toggle-row">
 <div>
-<div class="toggle-label">Include Solution in Same Excel</div>
-<div class="toggle-sub">On: pair puzzles and answers in one workbook. Off: separate solution workbook.</div>
+<div class="toggle-label">Include Rules / Instructions</div>
+<div class="toggle-sub">Draws concise solver instructions on book page</div>
+</div>
+<label class="switch">
+<input aria-label="Include Rules / Instructions" checked="" id="sdk-instructions-tog" type="checkbox"/>
+<span class="slider-switch"></span>
+</label>
+</div>
+</div>
+</div>
+
+<div class="settings-column settings-secondary">
+<div class="section-label">Solution mode &amp; density</div>
+<div class="toggle-row">
+<div>
+<div class="toggle-label">Include Solution with Puzzle (Same Excel)</div>
+<div class="toggle-sub">On: solutions come right behind/with each game page (linked to games/page). Off: separate solutions workbook (up to 9 per page).</div>
 </div>
 <label class="switch">
 <input aria-label="Include Solution in Same Excel" checked="" id="sdk-same-excel-tog" type="checkbox"/>
 <span class="slider-switch"></span>
 </label>
-</div><div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
-<label id="sdk-sol-layout-label">Solutions layout</label>
-<div class="preset-pills" id="sdk-sol-layout-pills" aria-labelledby="sdk-sol-layout-label" role="radiogroup">
+</div>
+<div class="form-group" style="margin-top:0.75rem;">
+<label for="sdk-sol-per-page">Solutions per page <span class="hint" id="sdk-sol-linked-badge">Linked to games/page</span></label>
+<select id="sdk-sol-per-page">
+<option value="1">1 solution / page</option>
+<option value="2">2 solutions / page</option>
+<option value="3">3 solutions / page</option>
+<option value="4">4 solutions / page</option>
+<option selected="" value="6">6 solutions / page</option>
+<option value="9">9 solutions / page (Max 3×3)</option>
+</select>
+</div>
+<div class="form-group">
+<label for="sdk-solution-mode">Solution Mark Mode</label>
+<select id="sdk-solution-mode">
+<option selected="" value="color">Distinct Royal Blue Color</option>
+<option value="circled">Circled Solved Cells</option>
+<option value="normal">Same as Clue Color</option>
+</select>
+</div>
+<div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
+<label id="sdk-sol-layout-label">Canva solutions image mode</label>
+<div aria-labelledby="sdk-sol-layout-label" class="preset-pills" id="sdk-sol-layout-pills" role="radiogroup">
 <button class="preset-pill-btn active" data-sol-layout="per_grid" role="radio" type="button">One image per grid</button>
 <button class="preset-pill-btn" data-sol-layout="per_page" role="radio" type="button">One image per answer page</button>
 </div>
 <div class="field-help" id="sdk-sol-layout-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;"></div>
-</div><div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
+</div>
+</div>
+</div>
+
+<!-- WORD SEARCH STEP 3 -->
+<div class="control-section" id="ws-styling-section" style="display:none;">
+<div class="settings-column settings-primary">
+<div class="layout-controls">
+<div class="section-label">Games per page &amp; word bank</div>
+<div class="form-group">
+<label for="ws-puz-per-page">Word Search games per page (Max 2)</label>
+<select id="ws-puz-per-page">
+<option selected="" value="1">1 game / page (Full Page + Word Bank)</option>
+<option value="2">2 games / page (Stacked · Each with its own Word Bank)</option>
+</select>
+<p class="field-help">With 2 games per page, each puzzle has its own grid and word bank, and Canva Excel rows include puzzle 1 &amp; puzzle 2 columns.</p>
+</div>
+<div class="form-group">
+<label for="ws-word-cols-select">Word Bank Columns</label>
+<select id="ws-word-cols-select">
+<option value="1">1 Column</option>
+<option value="2">2 Columns</option>
+<option selected="" value="3">3 Columns (Balanced)</option>
+<option value="4">4 Columns (Compact)</option>
+<option value="5">5 Columns</option>
+</select>
+</div>
+<div class="toggle-row" style="margin-top:0.75rem;">
+<div>
+<div class="toggle-label">Display Word Bank on Page</div>
+<div class="toggle-sub">Show the word bank beneath each puzzle grid</div>
+</div>
+<label class="switch">
+<input aria-label="Display Word Bank" checked="" id="ws-show-bank-tog" type="checkbox"/>
+<span class="slider-switch"></span>
+</label>
+</div>
+</div>
+</div>
+
+<div class="settings-column settings-secondary">
+<div class="section-label">Solution mode &amp; density</div>
+<div class="toggle-row">
+<div>
+<div class="toggle-label">Include Solution with Puzzle (Same Excel)</div>
+<div class="toggle-sub">On: solution is paired behind/with the game page (linked to games per page). Off: separate solutions workbook (select up to 9 per page).</div>
+</div>
+<label class="switch">
+<input aria-label="Include Solution in Same Excel" checked="" id="ws-same-excel-tog" type="checkbox"/>
+<span class="slider-switch"></span>
+</label>
+</div>
+<div class="form-group" style="margin-top:0.75rem;">
+<label for="ws-sol-per-page">Solutions per page <span class="hint" id="ws-sol-linked-badge">Linked to games/page</span></label>
+<select id="ws-sol-per-page">
+<option value="1">1 solution / page (Linked to 1 game/page)</option>
+<option value="2">2 solutions / page (Linked to 2 games/page)</option>
+<option value="3">3 solutions / page</option>
+<option selected="" value="4">4 solutions / page (Standard 2×2)</option>
+<option value="6">6 solutions / page (Compact 2×3)</option>
+<option value="9">9 solutions / page (Max 3×3)</option>
+</select>
+</div>
+<div class="form-group">
+<label for="ws-sol-style-sel">Solution Marker Style</label>
+<select id="ws-sol-style-sel">
+<option selected="" value="capsule">Capsule / Pill Highlighter (Multi-Color)</option>
+<option value="capsule_mono">Capsule Highlighter (Clean Monochrome)</option>
+<option value="circle">Circled Answer Letters</option>
+<option value="box">Boxed Answer Letters</option>
+<option value="bold">Bold Highlighted Letters Only</option>
+</select>
+</div>
+<div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
+<label id="ws-sol-layout-label">Canva solutions image mode</label>
+<div aria-labelledby="ws-sol-layout-label" class="preset-pills" id="ws-sol-layout-pills" role="radiogroup">
+<button class="preset-pill-btn active" data-sol-layout="per_grid" role="radio" type="button">One image per grid</button>
+<button class="preset-pill-btn" data-sol-layout="per_page" role="radio" type="button">One image per answer page</button>
+</div>
+<div class="field-help" id="ws-sol-layout-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ==================== STEP 4: EXPORT ==================== -->
+<div class="tab-panel" id="tab-review">
+<div class="step-heading"><h2>4. Export for Canva Bulk &amp; KDP</h2><p>Download your Canva Bulk Create Excel workbooks, 300 DPI PNG bundles, or print-ready PDF.</p></div>
+<div class="settings-column review-overview">
+<div aria-live="polite" id="book-review"></div>
+<div id="review-checks"></div>
+<details class="advanced" open="" style="margin-top:0.75rem;"><summary>PDF &amp; page format options (optional for Canva Bulk)</summary><div class="details-body">
+<div class="form-group">
+<label for="book-title">Book title</label>
+<input id="book-title" maxlength="120" required="" type="text" value="The Word Search Collection"/>
+</div>
+<div class="form-group" data-studio="wordsearch">
+<label for="ws-trim-choice">Page / Trim size</label>
+<select id="ws-trim-choice">
+<option selected="" value="8.5 x 11 inches (Letter)">8.5 x 11 inches (Letter - Large format)</option>
+<option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
+<option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
+<option value="8 x 10 inches">8 x 10 inches</option>
+</select>
+</div>
+<div class="form-group" data-studio="sudoku">
+<label for="sdk-trim-choice">Page / Trim size</label>
+<select id="sdk-trim-choice">
+<option selected="" value="8.5 x 11 inches (Letter)">8.5 x 11 inches (Letter - Large format)</option>
+<option value="6 x 9 inches">6 x 9 inches (Pocket / Travel)</option>
+<option value="8.5 x 8.5 inches">8.5 x 8.5 inches (Square Activity Book)</option>
+<option value="8 x 10 inches">8 x 10 inches</option>
+</select>
+</div>
+<label class="check-label"><input checked="" id="include-title-page" type="checkbox"/> Include an interior title page in PDF</label>
+</div></details>
+<p class="review-note">For black ink on white paper, with no bleed. Review the PDF in Amazon’s Print Previewer before publishing.</p>
+<a class="quiet-link" href="https://kdp.amazon.com/en_US/help/topic/G201857950" rel="noopener" target="_blank">Amazon paperback guidelines ↗</a>
+</div>
+
+<div class="settings-column review-downloads">
+<div data-studio="sudoku">
+<div class="canva-options-card">
+<div class="section-label">Canva Bulk batch splitting</div>
+<div class="form-group">
 <label for="sdk-canva-batch-preset">
-                                Canva Bulk Batch Split
-                                <span class="hint" id="sdk-canva-batch-badge">100 / batch</span>
+Canva Bulk Batch Split
+<span class="hint" id="sdk-canva-batch-badge">100 / batch</span>
 </label>
 <div class="form-row-2">
 <select id="sdk-canva-batch-preset">
@@ -581,28 +827,20 @@
 <input id="sdk-canva-batch-input" max="1000" min="10" placeholder="Pages per file" required="" step="10" style="display:none;" type="number" value="100"/>
 </div>
 <div class="field-help" id="sdk-canva-batch-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">
-                                📦 Large collections can be split into smaller workbooks for easier import.
-                            </div>
-</div><div class="field-help" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">📄 Answer density: <strong id="sdk-review-answers-badge">6 answers / page</strong> (set in Page design).</div></div></div><div data-studio="wordsearch"><div class="canva-options-card"><div class="section-label">Canva &amp; Excel workbook settings</div><div class="toggle-row">
-<div>
-<div class="toggle-label">Include Solution in Same Excel</div>
-<div class="toggle-sub">On: pair puzzles and answers in one workbook. Off: separate solution workbook.</div>
+📦 Large collections are split into smaller workbooks for Canva's 100-page limit.
 </div>
-<label class="switch">
-<input aria-label="Include Solution in Same Excel" checked="" id="ws-same-excel-tog" type="checkbox"/>
-<span class="slider-switch"></span>
-</label>
-</div><div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
-<label id="ws-sol-layout-label">Solutions layout</label>
-<div class="preset-pills" id="ws-sol-layout-pills" aria-labelledby="ws-sol-layout-label" role="radiogroup">
-<button class="preset-pill-btn active" data-sol-layout="per_grid" role="radio" type="button">One image per grid</button>
-<button class="preset-pill-btn" data-sol-layout="per_page" role="radio" type="button">One image per answer page</button>
 </div>
-<div class="field-help" id="ws-sol-layout-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;"></div>
-</div><div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
+<div class="field-help" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">📄 Answer density: <strong id="sdk-review-answers-badge">1 answers / page</strong> (set in Solution settings).</div>
+</div>
+</div>
+
+<div data-studio="wordsearch">
+<div class="canva-options-card">
+<div class="section-label">Canva Bulk batch splitting</div>
+<div class="form-group">
 <label for="ws-canva-batch-preset">
-                                Canva Bulk Batch Split
-                                <span class="hint" id="ws-canva-batch-badge">100 / batch</span>
+Canva Bulk Batch Split
+<span class="hint" id="ws-canva-batch-badge">100 / batch</span>
 </label>
 <div class="form-row-2">
 <select id="ws-canva-batch-preset">
@@ -615,45 +853,60 @@
 <input id="ws-canva-batch-input" max="1000" min="10" placeholder="Pages per file" required="" step="10" style="display:none;" type="number" value="100"/>
 </div>
 <div class="field-help" id="ws-canva-batch-help" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">
-                                📦 Large collections can be split into smaller workbooks for easier import.
-                            </div>
-</div><div class="field-help" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">📄 Answer density: <strong id="ws-review-answers-badge">4 answers / page</strong> (set in Page design).</div></div></div><div class="export-panel">
+📦 Large collections are split into smaller workbooks for Canva's 100-page limit.
+</div>
+</div>
+<div class="field-help" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">📄 Answer density: <strong id="ws-review-answers-badge">1 answers / page</strong> (set in Solution settings).</div>
+</div>
+</div>
+
+<div class="export-panel">
 <div class="export-header">
 <div>
-<div class="export-title">Export &amp; download interior</div>
-<div class="export-spec" id="export-summary-text">50 Puzzles · 8.5 x 11" Letter · 300 DPI Interior preview</div>
+<div class="export-title">Export &amp; download</div>
+<div class="export-spec" id="export-summary-text">1 Puzzles · 8.5 x 11" Letter · 300 DPI Interior preview</div>
 </div>
 </div>
 <div class="export-buttons-grid">
-<button class="btn-primary" id="btn-export-pdf"><strong>Download KDP PDF</strong><small>300 DPI · puzzles + answer key</small></button><button class="btn-secondary" id="btn-export-canva"><strong>Canva workbook</strong><small>Editable bulk-create content</small></button><button class="btn-secondary" id="btn-export-zip"><strong>Images &amp; Canva ZIP</strong><small>300 DPI grids + workbook</small></button><button class="btn-secondary" id="btn-export-solutions"><strong>Solution pages only</strong><small>Excel with embedded answer-page images</small></button></div>
+<button class="btn-primary" id="btn-export-canva"><strong>Canva Bulk Workbook</strong><small>Excel with embedded 300 DPI PNGs</small></button>
+<button class="btn-secondary" id="btn-export-zip"><strong>Images &amp; Canva ZIP</strong><small>300 DPI PNG folders + Excel</small></button>
+<button class="btn-secondary" id="btn-export-solutions"><strong>Solution Pages Only</strong><small>Separate Excel with answer images</small></button>
+<button class="btn-secondary" id="btn-export-pdf"><strong>Download KDP PDF</strong><small>300 DPI · puzzles + answer key</small></button>
+</div>
 <div class="progress-container" id="export-progress-container">
 <div class="progress-bar-bg">
 <div class="progress-bar-fill" id="export-progress-fill"></div>
 </div>
 <div class="progress-text" id="export-progress-text">Generating bundle...</div>
 </div>
-</div></div></div><div class="step-actions"><button class="btn-secondary" id="step-back" type="button">← Back</button><button class="btn-primary" id="step-next" type="button">Next: Puzzle content →</button></div></div>
-</aside><section class="studio-stage"><div class="preview-heading"><div><p class="preview-kicker">Live interior preview</p><h2 id="preview-book-title">The Word Search Collection</h2></div><span class="local-badge">● Built in your browser</span></div>
+</div>
+</div>
+</div>
+
+<div class="step-actions"><button class="btn-secondary" id="step-back" type="button">← Back</button><button class="btn-primary" id="step-next" type="button">Next: Words settings →</button></div>
+</div>
+</aside>
+<section class="studio-stage"><div class="preview-heading"><div><p class="preview-kicker">Live interior preview</p><h2 id="preview-book-title">The Word Search Collection</h2></div><span class="local-badge">● Built in your browser</span></div>
 <div class="metrics-strip">
 <div class="metric-item">
 <span class="metric-title">Puzzles</span>
-<span class="metric-value" id="metric-puzzles">50</span>
+<span class="metric-value" id="metric-puzzles">1</span>
 </div>
 <div class="metric-item">
 <span class="metric-title">Type</span>
-<span class="metric-value" id="metric-type">Classic 9×9</span>
+<span class="metric-value" id="metric-type">Animals</span>
 </div>
 <div class="metric-item">
 <span class="metric-title">Difficulty</span>
-<span class="metric-value" id="metric-diff">Medium ★★★☆☆</span>
+<span class="metric-value" id="metric-diff">Medium</span>
 </div>
 <div class="metric-item">
 <span class="metric-title">Grid Size</span>
-<span class="metric-value" id="metric-grid">9 × 9</span>
+<span class="metric-value" id="metric-grid">12 × 10</span>
 </div>
 <div class="metric-item">
-<span class="metric-title">Clues / Board</span>
-<span class="metric-value" id="metric-clues">32</span>
+<span class="metric-title">Words / Game</span>
+<span class="metric-value" id="metric-clues">12</span>
 </div>
 <div class="metric-item">
 <span class="metric-title">Games / Page</span>
@@ -685,8 +938,8 @@
 <canvas aria-label="Current interior page preview" id="main-stage-canvas" role="img"></canvas>
 </div>
 </div>
-<div class="preview-caption"><span id="preview-format-label">No bleed · answers included</span><button class="text-button" id="jump-review">Review &amp; export →</button></div><div aria-live="polite" id="studio-message" role="status"></div></section>
+<div class="preview-caption"><span id="preview-format-label">No bleed · answers included</span><button class="text-button" id="jump-review">Export →</button></div><div aria-live="polite" id="studio-message" role="status"></div></section>
 </main>
-<script src="js/app.js?v=pro9" type="module"></script>
+<script src="js/app.js?v=pro10" type="module"></script>
 </body>
 </html>

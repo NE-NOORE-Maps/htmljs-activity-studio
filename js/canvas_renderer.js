@@ -1,4 +1,4 @@
-import {createBookPage, pageText, fitImage, pageFooter} from "./book_layout.js?v=pro9";
+import {createBookPage, pageText, fitImage, pageFooter} from "./book_layout.js?v=pro10";
 /**
  * High-Resolution 300 DPI Canvas Raster Renderer for KDP Print & Live Previews.
  * Renders Sudoku grids, word searches, multi-game book interior pages, and composite solutions.
@@ -49,37 +49,117 @@ export function renderSudokuBookPageCanvas(options = {}) {
 }
 
 export function renderWordSearchBookPageCanvas(options = {}) {
-    const {puzzle, style = WS_PRESETS.adult_classic, pageNum = 1, bookPageNum = pageNum,
-        dpi = 150, dateText, calendarCanvas, wordColumns = 3, showWordBank = true, wordBankTitle} = options;
+    const {puzzle, puzzlesSlice, puzzlesPerPage = 1, style = WS_PRESETS.adult_classic, pageNum = 1, bookPageNum = pageNum,
+        dpi = 150, dateScope = 'per_game', dateText, calendarCanvas, dateStrings = [], calendarCanvases = [],
+        pageDateText, pageCalendarCanvas, wordColumns = 3, showWordBank = true, wordBankTitle} = options;
     const page = createBookPage(options);
     const {ctx,left,liveWidth,height} = page;
-    const words = [...(puzzle.placedWords || puzzle.words || [])].sort((a,b)=>a.localeCompare(b));
-    const cols = Math.max(1,Math.min(5,wordColumns)), bankRows = Math.ceil(words.length/cols);
-    const fontSize = style.fontScale >= 76 ? 14 : 11;
-    const lineH = fontSize*1.6;
-    const bankHeight = showWordBank ? 34+bankRows*lineH : 0;
-    const top = calendarCanvas ? 116 : dateText ? 103 : 85;
-    pageText(ctx,puzzle.title || `Word Search ${puzzle.puzzleId || pageNum}`,left,53,liveWidth-(calendarCanvas?100:0),22,'600');
-    pageText(ctx,[dateText,`Puzzle ${puzzle.puzzleId || pageNum}`].filter(Boolean).join(' · '),left,75,liveWidth-(calendarCanvas?100:0),10);
-    if(calendarCanvas) fitImage(ctx,calendarCanvas,left+liveWidth-85,39,85,64);
-    const availableH = height-top-bankHeight-72;
-    if(availableH < 72) throw new Error('The word list is too tall for this page. Use more word columns or fewer words per puzzle.');
-    const cellPt = Math.min(liveWidth/puzzle.width, availableH/puzzle.height);
-    const grid = renderWordSearchGridCanvas({puzzle,style,dpi,cellMm:cellPt/72*25.4,showGridLines:true});
-    const gridH = Math.min(availableH,liveWidth*grid.height/grid.width);
-    fitImage(ctx,grid,left,top,liveWidth,gridH);
-    if(showWordBank) {
-        const bankY = top+gridH+26;
-        pageText(ctx,wordBankTitle || 'Words to find',left,bankY,liveWidth,11,'600');
-        const colW = liveWidth/cols;
-        words.forEach((word,i) => {
-            const x = left+Math.floor(i/bankRows)*colW, y = bankY+24+(i%bankRows)*lineH;
-            ctx.strokeStyle = '#777'; ctx.lineWidth = .75;
-            ctx.strokeRect(x,y-3.5,7,7);
-            pageText(ctx,word,x+13,y,colW-20,fontSize,'400');
-        });
+    const ppp = Math.max(1, Math.min(2, puzzlesPerPage || 1));
+    const slice = (puzzlesSlice && puzzlesSlice.length) ? puzzlesSlice.slice(0, ppp) : (puzzle ? [puzzle] : []);
+
+    if (ppp === 1) {
+        const p = slice[0] || puzzle;
+        if (!p) return page.canvas;
+        const activeDate = dateScope === 'per_page' ? (pageDateText ?? dateText) : (dateStrings?.[0] ?? dateText);
+        const activeCal = dateScope === 'per_page' ? (pageCalendarCanvas ?? calendarCanvas) : (calendarCanvases?.[0] ?? calendarCanvas);
+        const words = [...(p.placedWords || p.words || [])].sort((a,b)=>a.localeCompare(b));
+        const cols = Math.max(1,Math.min(5,wordColumns)), bankRows = Math.ceil(words.length/cols);
+        const fontSize = style.fontScale >= 76 ? 14 : 11;
+        const lineH = fontSize*1.6;
+        const bankHeight = showWordBank ? 34+bankRows*lineH : 0;
+        const top = activeCal ? 116 : activeDate ? 103 : 85;
+        pageText(ctx,p.title || `Word Search ${p.puzzleId || pageNum}`,left,53,liveWidth-(activeCal?100:0),22,'600');
+        pageText(ctx,[activeDate,`Puzzle ${p.puzzleId || pageNum}`].filter(Boolean).join(' · '),left,75,liveWidth-(activeCal?100:0),10);
+        if(activeCal) fitImage(ctx,activeCal,left+liveWidth-85,39,85,64);
+        const availableH = height-top-bankHeight-72;
+        if(availableH < 72) throw new Error('The word list is too tall for this page. Use more word columns or fewer words per puzzle.');
+        const cellPt = Math.min(liveWidth/p.width, availableH/p.height);
+        const grid = renderWordSearchGridCanvas({puzzle:p,style,dpi,cellMm:cellPt/72*25.4,showGridLines:true});
+        const gridH = Math.min(availableH,liveWidth*grid.height/grid.width);
+        fitImage(ctx,grid,left,top,liveWidth,gridH);
+        if(showWordBank) {
+            const bankY = top+gridH+26;
+            pageText(ctx,wordBankTitle || 'Words to find',left,bankY,liveWidth,11,'600');
+            const colW = liveWidth/cols;
+            words.forEach((word,i) => {
+                const x = left+Math.floor(i/bankRows)*colW, y = bankY+24+(i%bankRows)*lineH;
+                ctx.strokeStyle = '#777'; ctx.lineWidth = .75;
+                ctx.strokeRect(x,y-3.5,7,7);
+                pageText(ctx,word,x+13,y,colW-20,fontSize,'400');
+            });
+        }
+        pageFooter(page,bookPageNum);
+        return page.canvas;
     }
-    pageFooter(page,bookPageNum);
+
+    // 2 Games per page (stacked vertically, each with its own Grid + Word Bank)
+    let top = 40;
+    if (dateScope === 'per_page' && (pageDateText || pageCalendarCanvas)) {
+        pageText(ctx, pageDateText || 'Daily Word Search', left, top + 10, liveWidth - 90, 16, '600');
+        if (pageCalendarCanvas) fitImage(ctx, pageCalendarCanvas, left + liveWidth - 78, top - 2, 78, 56);
+        top += pageCalendarCanvas ? 64 : 30;
+    }
+    const gap = 20;
+    const slotH = (height - top - 58 - gap) / 2;
+
+    slice.forEach((p, idx) => {
+        if (!p) return;
+        const slotY = top + idx * (slotH + gap);
+        if (idx > 0) {
+            ctx.save();
+            ctx.strokeStyle = '#d1d5db';
+            ctx.lineWidth = 0.75;
+            ctx.beginPath();
+            ctx.moveTo(left, slotY - gap / 2);
+            ctx.lineTo(left + liveWidth, slotY - gap / 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        const dTxt = dateScope === 'per_game' ? (dateStrings?.[idx] ?? (idx === 0 ? dateText : null)) : null;
+        const calCnv = dateScope === 'per_game' ? (calendarCanvases?.[idx] ?? (idx === 0 ? calendarCanvas : null)) : null;
+        const calW = calCnv ? 68 : 0;
+        const headW = liveWidth - (calW ? calW + 10 : 0);
+        const pNum = p.puzzleId || ((pageNum - 1) * 2 + idx + 1);
+        pageText(ctx, p.title || `Word Search ${pNum}`, left, slotY + 8, headW, 14, '600');
+        pageText(ctx, [dTxt, `Puzzle ${pNum}`].filter(Boolean).join(' · '), left, slotY + 24, headW, 9);
+        if (calCnv) fitImage(ctx, calCnv, left + liveWidth - calW, slotY, calW, 48);
+
+        const headerH = calCnv ? 52 : 36;
+        const contentY = slotY + headerH;
+        const contentH = Math.max(80, slotH - headerH);
+        const words = [...(p.placedWords || p.words || [])].sort((a,b)=>a.localeCompare(b));
+
+        if (showWordBank && words.length > 0) {
+            const gridAreaW = Math.min(contentH, liveWidth * 0.56);
+            const cellPt = Math.min(gridAreaW / p.width, contentH / p.height);
+            const grid = renderWordSearchGridCanvas({puzzle: p, style, dpi, cellMm: cellPt / 72 * 25.4, showGridLines: true});
+            fitImage(ctx, grid, left, contentY, gridAreaW, contentH);
+
+            const bankX = left + gridAreaW + 16;
+            const bankW = Math.max(80, liveWidth - gridAreaW - 16);
+            pageText(ctx, wordBankTitle || 'Words to find', bankX, contentY + 4, bankW, 10, '600');
+            const cols = Math.min(2, Math.max(1, words.length > 10 ? 2 : 1));
+            const bankRows = Math.ceil(words.length / cols);
+            const availBankH = Math.max(40, contentH - 20);
+            const lineH = Math.min(14, availBankH / Math.max(1, bankRows));
+            const fontSize = Math.max(7.5, Math.min(10, lineH * 0.72));
+            const colW = bankW / cols;
+            words.forEach((word, wIdx) => {
+                const wx = bankX + Math.floor(wIdx / bankRows) * colW;
+                const wy = contentY + 20 + (wIdx % bankRows) * lineH;
+                ctx.strokeStyle = '#777';
+                ctx.lineWidth = 0.6;
+                ctx.strokeRect(wx, wy - 3, 5.5, 5.5);
+                pageText(ctx, word, wx + 9, wy, colW - 12, fontSize, '400');
+            });
+        } else {
+            const cellPt = Math.min(liveWidth / p.width, contentH / p.height);
+            const grid = renderWordSearchGridCanvas({puzzle: p, style, dpi, cellMm: cellPt / 72 * 25.4, showGridLines: true});
+            fitImage(ctx, grid, left, contentY, liveWidth, contentH);
+        }
+    });
+
+    pageFooter(page, bookPageNum);
     return page.canvas;
 }
 
@@ -382,7 +462,8 @@ export function renderSudokuGridCanvas({
     // 4. Digits & Symbols
     const fontScale = (style.fontScale || 64) / 100.0;
     const fontPx = Math.max(9, Math.round(cellPx * fontScale));
-    const fontFam = style.clueFont || "Outfit";
+    const fontFam = style.clueFont || "'Outfit', sans-serif";
+    const fontSpec = (fontFam.includes(",") || fontFam.includes("'")) ? fontFam : `"${fontFam}", sans-serif`;
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -399,7 +480,7 @@ export function renderSudokuGridCanvas({
             if (solution) {
                 if (isClue) {
                     ctx.fillStyle = style.clueColor || "#111815";
-                    ctx.font = `bold ${fontPx}px "${fontFam}", sans-serif`;
+                    ctx.font = `bold ${fontPx}px ${fontSpec}`;
                     ctx.fillText(symbol, cx, cy);
                 } else {
                     // Solved digit
@@ -412,12 +493,12 @@ export function renderSudokuGridCanvas({
                         ctx.stroke();
                     }
                     ctx.fillStyle = style.solutionColor || "#1d4ed8";
-                    ctx.font = `bold ${fontPx}px "${fontFam}", sans-serif`;
+                    ctx.font = `bold ${fontPx}px ${fontSpec}`;
                     ctx.fillText(symbol, cx, cy);
                 }
             } else {
                 ctx.fillStyle = style.clueColor || "#111815";
-                ctx.font = `bold ${fontPx}px "${fontFam}", sans-serif`;
+                ctx.font = `bold ${fontPx}px ${fontSpec}`;
                 ctx.fillText(symbol, cx, cy);
             }
         }
@@ -447,9 +528,6 @@ export const WORDSEARCH_HIGHLIGHT_COLORS = [
 ];
 
 /**
- * Render a single Word Search grid (or solution with highlighted words) at exact DPI.
- */
-/**
  * Default Word Search Presets
  */
 export const WS_PRESETS = {
@@ -468,30 +546,30 @@ export const WS_PRESETS = {
         gridLineWidth: 0.9,
         gridLineColor: "#111815",
         fontScale: 75,
-        letterFont: "'Plus Jakarta Sans', sans-serif",
+        letterFont: "'Atkinson Hyperlegible', sans-serif",
         letterColor: "#000000",
         solutionStyle: "capsule",
-        description: "Bold high-contrast cell boxes and enlarged letters for seniors and large print editions."
+        description: "Bold high-contrast cell boxes and hyper-legible enlarged letters for seniors and large print editions."
     },
     kids_activity: {
         cellStyle: "rounded_boxes",
         gridLineWidth: 0.8,
         gridLineColor: "#516d61",
         fontScale: 68,
-        letterFont: "'Outfit', sans-serif",
+        letterFont: "'Fredoka', sans-serif",
         letterColor: "#172721",
         solutionStyle: "capsule",
-        description: "Playful rounded cell tiles, soft forest green borders, large punchy letters. Perfect for kids' activity books."
+        description: "Playful rounded cell tiles, friendly rounded kids font, and large punchy letters. Perfect for kids' activity books."
     },
     classroom_clean: {
         cellStyle: "none",
         gridLineWidth: 0.0,
         gridLineColor: "#9da49f",
         fontScale: 65,
-        letterFont: "'Outfit', sans-serif",
+        letterFont: "'Quicksand', sans-serif",
         letterColor: "#000000",
         solutionStyle: "box",
-        description: "Clean borderless design without grid lines. Floating letters for a modern, airy aesthetic."
+        description: "Clean borderless design without grid lines. Floating letters for a modern classroom aesthetic."
     },
     custom: {
         cellStyle: "grid",
@@ -501,7 +579,7 @@ export const WS_PRESETS = {
         letterFont: "'Outfit', sans-serif",
         letterColor: "#202a26",
         solutionStyle: "capsule",
-        description: "Full manual control over every slider, color, and line option."
+        description: "Full manual control over every slider, font category, color, and line option."
     }
 };
 
@@ -584,6 +662,17 @@ export function renderWordSearchGridCanvas({
                     ctx.stroke();
                 }
             }
+        } else if (cellStyle === "circles") {
+            const radius = Math.max(4, Math.round(cellPx * 0.44));
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    const cx = c * cellPx + cellPx / 2;
+                    const cy = yOffset + r * cellPx + cellPx / 2;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
         } else if (cellStyle === "boxes") {
             for (let r = 0; r < height; r++) {
                 for (let c = 0; c < width; c++) {
@@ -592,6 +681,28 @@ export function renderWordSearchGridCanvas({
                     ctx.strokeRect(bx, by, cellPx - 2, cellPx - 2);
                 }
             }
+        } else if (cellStyle === "dotted") {
+            ctx.save();
+            const dashUnit = Math.max(2, Math.round(lineW * 2));
+            if (typeof ctx.setLineDash === "function") ctx.setLineDash([dashUnit, dashUnit * 1.5]);
+            for (let r = 1; r < height; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, yOffset + r * cellPx);
+                ctx.lineTo(gridW, yOffset + r * cellPx);
+                ctx.stroke();
+            }
+            for (let c = 1; c < width; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * cellPx, yOffset);
+                ctx.lineTo(c * cellPx, yOffset + gridH);
+                ctx.stroke();
+            }
+            if (typeof ctx.setLineDash === "function") ctx.setLineDash([]);
+            ctx.restore();
+            const outerW = Math.max(lineW, Math.round((0.9 / MM_TO_INCH) * dpi));
+            ctx.strokeStyle = lineCol;
+            ctx.lineWidth = outerW;
+            ctx.strokeRect(outerW / 2, yOffset + outerW / 2, gridW - outerW, gridH - outerW);
         } else if (cellStyle === "grid") {
             for (let r = 0; r <= height; r++) {
                 ctx.beginPath();
@@ -654,6 +765,26 @@ export function renderWordSearchGridCanvas({
                 ctx.stroke();
                 ctx.restore();
             });
+        } else if (solStyle === "capsule_mono") {
+            puzzle.placements.forEach(placement => {
+                const [r1, c1] = placement.start;
+                const [r2, c2] = placement.end;
+
+                const x1 = c1 * cellPx + cellPx / 2;
+                const y1 = yOffset + r1 * cellPx + cellPx / 2;
+                const x2 = c2 * cellPx + cellPx / 2;
+                const y2 = yOffset + r2 * cellPx + cellPx / 2;
+
+                ctx.save();
+                ctx.lineCap = "round";
+                ctx.lineWidth = Math.round(cellPx * 0.76);
+                ctx.strokeStyle = "rgba(17, 24, 39, 0.22)";
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.restore();
+            });
         } else if (solStyle === "box") {
             puzzle.placements.forEach(placement => {
                 const [dr, dc] = placement.direction;
@@ -673,6 +804,28 @@ export function renderWordSearchGridCanvas({
                     const bw = cellPx - 2 * pad;
                     const bh = cellPx - 2 * pad;
                     ctx.strokeRect(bx, by, bw, bh);
+                }
+                ctx.restore();
+            });
+        } else if (solStyle === "circle") {
+            puzzle.placements.forEach(placement => {
+                const [dr, dc] = placement.direction;
+                const len = placement.word.length;
+                const [sr, sc] = placement.start;
+
+                ctx.save();
+                ctx.lineWidth = Math.max(2, Math.round((0.75 / MM_TO_INCH) * dpi));
+                ctx.strokeStyle = "#1D4ED8";
+                const radius = Math.round(cellPx * 0.42);
+
+                for (let i = 0; i < len; i++) {
+                    const r = sr + i * dr;
+                    const c = sc + i * dc;
+                    const cx = c * cellPx + cellPx / 2;
+                    const cy = yOffset + r * cellPx + cellPx / 2;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.stroke();
                 }
                 ctx.restore();
             });

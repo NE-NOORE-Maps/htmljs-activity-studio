@@ -813,11 +813,13 @@ export async function buildCanvaWordSearchExcel(options = {}) {
 async function buildCanvaWordSearchExcelJS(options = {}) {
     const {
         puzzles = [],
+        puzzlesPerPage = 1,
         batchSize = 100,
         imageBatchProvider = null
     } = options;
 
-    const totalPages = puzzles.length;
+    const totalPuzzles = puzzles.length;
+    const totalPages = (puzzlesPerPage === 1) ? totalPuzzles : Math.ceil(totalPuzzles / puzzlesPerPage);
     const effectiveBatchSize = (batchSize && batchSize > 0) ? batchSize : totalPages;
     const numBatches = Math.ceil(totalPages / effectiveBatchSize);
     const padLen = String(totalPages).length > 2 ? String(totalPages).length : 2;
@@ -829,7 +831,9 @@ async function buildCanvaWordSearchExcelJS(options = {}) {
         const endPage = Math.min(totalPages, (b + 1) * effectiveBatchSize);
         let batchImageOpts = options;
         if (imageBatchProvider) {
-            batchImageOpts = { ...options, ...(await imageBatchProvider(startPage, endPage, startPage, endPage)) };
+            const puzStart = startPage * puzzlesPerPage;
+            const puzEnd = Math.min(totalPuzzles, endPage * puzzlesPerPage);
+            batchImageOpts = { ...options, ...(await imageBatchProvider(puzStart, puzEnd, startPage, endPage)) };
         }
         const wb = createSingleWordSearchBatchExcelJS({
             ...batchImageOpts,
@@ -863,12 +867,16 @@ async function buildCanvaWordSearchExcelJS(options = {}) {
 
 function createSingleWordSearchBatchExcelJS({
     puzzles = [],
+    puzzlesPerPage = 1,
     includeSolutionInSameExcel = true,
+    dateScope = "per_game",
     dateStrings = [],
+    pageDateStrings = [],
     hasCalendarImages = false,
     gridImages = [],
     solutionImages = [],
     calendarImages = [],
+    pageCalendarImages = [],
     startPage = 0,
     endPage = 0,
     totalPages = 0,
@@ -876,34 +884,7 @@ function createSingleWordSearchBatchExcelJS({
 } = {}) {
     const wb = new window.ExcelJS.Workbook();
     const ws = wb.addWorksheet("Bulk Create");
-
-    const cols = [
-        { header: "title", key: "title", width: 22 },
-        { header: "puzzle_number", key: "puzzle_number", width: 16 },
-        { header: "word_count", key: "word_count", width: 14 },
-        { header: "words_list", key: "words_list", width: 45 }
-    ];
-
-    let dateColIdx = -1;
-    if (dateStrings && dateStrings.length > 0) {
-        cols.push({ header: "date", key: "date", width: 22 });
-        dateColIdx = cols.length - 1;
-    }
-
-    cols.push({ header: "grid_image", key: "grid_image", width: 32 });
-    const gridColIdx = cols.length - 1;
-
-    let calColIdx = -1;
-    if (hasCalendarImages) {
-        cols.push({ header: "calendar_image", key: "calendar_image", width: 28 });
-        calColIdx = cols.length - 1;
-    }
-
-    let solColIdx = -1;
-    if (includeSolutionInSameExcel) {
-        cols.push({ header: "solution_image", key: "solution_image", width: 32 });
-        solColIdx = cols.length - 1;
-    }
+    const totalPuzzles = puzzles.length;
 
     let maxWords = 0;
     puzzles.forEach(p => {
@@ -912,82 +893,275 @@ function createSingleWordSearchBatchExcelJS({
         }
     });
 
-    for (let w = 1; w <= maxWords; w++) {
-        cols.push({ header: `word_${w}`, key: `word_${w}`, width: 16 });
-    }
+    if (puzzlesPerPage === 1) {
+        const cols = [
+            { header: "title", key: "title", width: 22 },
+            { header: "puzzle_number", key: "puzzle_number", width: 16 },
+            { header: "word_count", key: "word_count", width: 14 },
+            { header: "words_list", key: "words_list", width: 45 }
+        ];
 
-    ws.columns = cols;
+        const activeDateStrings = (dateScope === "per_page" && pageDateStrings && pageDateStrings.length > 0)
+            ? pageDateStrings
+            : dateStrings;
+        const activeCalendarImages = (dateScope === "per_page" && pageCalendarImages && pageCalendarImages.length > 0)
+            ? pageCalendarImages
+            : calendarImages;
 
-    const hRow = ws.getRow(1);
-    hRow.height = 26;
-    hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    hRow.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF184534" }
-    };
-    hRow.alignment = { vertical: "middle", horizontal: "center" };
+        let dateColIdx = -1;
+        if (activeDateStrings && activeDateStrings.length > 0) {
+            cols.push({ header: "date", key: "date", width: 22 });
+            dateColIdx = cols.length - 1;
+        }
 
-    for (let i = startPage; i < endPage; i++) {
-        const p = puzzles[i];
-        const pNum = i + 1 + numberOffset;
-        const rowNumber = (i - startPage) + 2;
+        cols.push({ header: "grid_image", key: "grid_image", width: 32 });
+        const gridColIdx = cols.length - 1;
 
-        const rowData = {
-            title: p.title,
-            puzzle_number: pNum,
-            word_count: p.placedWords ? p.placedWords.length : 0,
-            words_list: p.placedWords ? p.placedWords.join(", ") : ""
+        let calColIdx = -1;
+        if (hasCalendarImages) {
+            cols.push({ header: "calendar_image", key: "calendar_image", width: 28 });
+            calColIdx = cols.length - 1;
+        }
+
+        let solColIdx = -1;
+        if (includeSolutionInSameExcel) {
+            cols.push({ header: "solution_image", key: "solution_image", width: 32 });
+            solColIdx = cols.length - 1;
+        }
+
+        for (let w = 1; w <= maxWords; w++) {
+            cols.push({ header: `word_${w}`, key: `word_${w}`, width: 16 });
+        }
+
+        ws.columns = cols;
+
+        const hRow = ws.getRow(1);
+        hRow.height = 26;
+        hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        hRow.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF184534" }
         };
+        hRow.alignment = { vertical: "middle", horizontal: "center" };
 
-        if (dateColIdx !== -1 && dateStrings[i]) {
-            rowData.date = dateStrings[i];
+        for (let i = startPage; i < endPage; i++) {
+            const p = puzzles[i];
+            const pNum = i + 1 + numberOffset;
+            const rowNumber = (i - startPage) + 2;
+
+            const rowData = {
+                title: p.title,
+                puzzle_number: pNum,
+                word_count: p.placedWords ? p.placedWords.length : 0,
+                words_list: p.placedWords ? p.placedWords.join(", ") : ""
+            };
+
+            if (dateColIdx !== -1 && activeDateStrings[i]) {
+                rowData.date = activeDateStrings[i];
+            }
+
+            if (p.placedWords) {
+                p.placedWords.forEach((word, wIdx) => {
+                    rowData[`word_${wIdx + 1}`] = word;
+                });
+            }
+
+            const row = ws.addRow(rowData);
+            row.height = 150;
+            row.alignment = { vertical: "middle", horizontal: "center" };
+
+            if (gridImages[i]) {
+                const imgId = wb.addImage({
+                    base64: cleanBase64(gridImages[i]),
+                    extension: "png"
+                });
+                ws.addImage(imgId, {
+                    tl: { col: gridColIdx + 0.08, row: rowNumber - 1 + 0.05 },
+                    ext: { width: 140, height: 140 },
+                    editAs: "oneCell"
+                });
+            }
+
+            if (calColIdx !== -1 && activeCalendarImages[i]) {
+                const calId = wb.addImage({
+                    base64: cleanBase64(activeCalendarImages[i]),
+                    extension: "png"
+                });
+                ws.addImage(calId, {
+                    tl: { col: calColIdx + 0.08, row: rowNumber - 1 + 0.15 },
+                    ext: { width: 140, height: 110 },
+                    editAs: "oneCell"
+                });
+            }
+
+            if (solColIdx !== -1 && solutionImages[i]) {
+                const solId = wb.addImage({
+                    base64: cleanBase64(solutionImages[i]),
+                    extension: "png"
+                });
+                ws.addImage(solId, {
+                    tl: { col: solColIdx + 0.08, row: rowNumber - 1 + 0.05 },
+                    ext: { width: 140, height: 140 },
+                    editAs: "oneCell"
+                });
+            }
+        }
+    } else {
+        const cols = [{ header: "page_number", key: "page_number", width: 14 }];
+
+        let pageDateColIdx = -1;
+        let pageCalColIdx = -1;
+        if (dateScope === "per_page") {
+            if (pageDateStrings && pageDateStrings.length > 0) {
+                cols.push({ header: "date", key: "date", width: 22 });
+                pageDateColIdx = cols.length - 1;
+            }
+            if (hasCalendarImages) {
+                cols.push({ header: "calendar_image", key: "calendar_image", width: 28 });
+                pageCalColIdx = cols.length - 1;
+            }
         }
 
-        if (p.placedWords) {
-            p.placedWords.forEach((word, wIdx) => {
-                rowData[`word_${wIdx + 1}`] = word;
-            });
+        const slotColMap = [];
+        const hasPerGameDates = dateScope !== "per_page" && dateStrings && dateStrings.length > 0;
+
+        for (let slot = 0; slot < puzzlesPerPage; slot++) {
+            const slotNum = slot + 1;
+            const slotInfo = {};
+
+            cols.push({ header: `puzzle_${slotNum}_title`, key: `puzzle_${slotNum}_title`, width: 22 });
+            cols.push({ header: `puzzle_${slotNum}_number`, key: `puzzle_${slotNum}_number`, width: 16 });
+            cols.push({ header: `puzzle_${slotNum}_word_count`, key: `puzzle_${slotNum}_word_count`, width: 16 });
+            cols.push({ header: `puzzle_${slotNum}_words_list`, key: `puzzle_${slotNum}_words_list`, width: 42 });
+
+            if (hasPerGameDates) {
+                cols.push({ header: `puzzle_${slotNum}_date`, key: `puzzle_${slotNum}_date`, width: 22 });
+                slotInfo.dateColIdx = cols.length - 1;
+            }
+
+            cols.push({ header: `puzzle_${slotNum}_image`, key: `puzzle_${slotNum}_image`, width: 32 });
+            slotInfo.gridColIdx = cols.length - 1;
+
+            if (dateScope !== "per_page" && hasCalendarImages) {
+                cols.push({ header: `puzzle_${slotNum}_calendar`, key: `puzzle_${slotNum}_calendar`, width: 28 });
+                slotInfo.calColIdx = cols.length - 1;
+            }
+
+            if (includeSolutionInSameExcel) {
+                cols.push({ header: `puzzle_${slotNum}_solution`, key: `puzzle_${slotNum}_solution`, width: 32 });
+                slotInfo.solColIdx = cols.length - 1;
+            }
+
+            for (let w = 1; w <= maxWords; w++) {
+                cols.push({ header: `puzzle_${slotNum}_word_${w}`, key: `puzzle_${slotNum}_word_${w}`, width: 16 });
+            }
+
+            slotColMap.push(slotInfo);
         }
 
-        const row = ws.addRow(rowData);
-        row.height = 150;
-        row.alignment = { vertical: "middle", horizontal: "center" };
+        ws.columns = cols;
 
-        if (gridImages[i]) {
-            const imgId = wb.addImage({
-                base64: cleanBase64(gridImages[i]),
-                extension: "png"
-            });
-            ws.addImage(imgId, {
-                tl: { col: gridColIdx + 0.08, row: rowNumber - 1 + 0.05 },
-                ext: { width: 140, height: 140 },
-                editAs: "oneCell"
-            });
-        }
+        const hRow = ws.getRow(1);
+        hRow.height = 26;
+        hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        hRow.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF184534" }
+        };
+        hRow.alignment = { vertical: "middle", horizontal: "center" };
 
-        if (calColIdx !== -1 && calendarImages[i]) {
-            const calId = wb.addImage({
-                base64: cleanBase64(calendarImages[i]),
-                extension: "png"
-            });
-            ws.addImage(calId, {
-                tl: { col: calColIdx + 0.08, row: rowNumber - 1 + 0.15 },
-                ext: { width: 140, height: 110 },
-                editAs: "oneCell"
-            });
-        }
+        for (let pageIdx = startPage; pageIdx < endPage; pageIdx++) {
+            const rowNumber = (pageIdx - startPage) + 2;
+            const rowData = { page_number: pageIdx + 1 };
 
-        if (solColIdx !== -1 && solutionImages[i]) {
-            const solId = wb.addImage({
-                base64: cleanBase64(solutionImages[i]),
-                extension: "png"
-            });
-            ws.addImage(solId, {
-                tl: { col: solColIdx + 0.08, row: rowNumber - 1 + 0.05 },
-                ext: { width: 140, height: 140 },
-                editAs: "oneCell"
-            });
+            if (pageDateColIdx !== -1 && pageDateStrings && pageDateStrings[pageIdx]) {
+                rowData.date = pageDateStrings[pageIdx];
+            }
+
+            for (let slot = 0; slot < puzzlesPerPage; slot++) {
+                const pIdx = pageIdx * puzzlesPerPage + slot;
+                const slotNum = slot + 1;
+
+                if (pIdx < totalPuzzles) {
+                    const p = puzzles[pIdx];
+                    const pNum = pIdx + 1 + numberOffset;
+                    rowData[`puzzle_${slotNum}_title`] = p.title;
+                    rowData[`puzzle_${slotNum}_number`] = pNum;
+                    rowData[`puzzle_${slotNum}_word_count`] = p.placedWords ? p.placedWords.length : 0;
+                    rowData[`puzzle_${slotNum}_words_list`] = p.placedWords ? p.placedWords.join(", ") : "";
+
+                    if (hasPerGameDates && dateStrings[pIdx]) {
+                        rowData[`puzzle_${slotNum}_date`] = dateStrings[pIdx];
+                    }
+
+                    if (p.placedWords) {
+                        p.placedWords.forEach((word, wIdx) => {
+                            rowData[`puzzle_${slotNum}_word_${wIdx + 1}`] = word;
+                        });
+                    }
+                }
+            }
+
+            const row = ws.addRow(rowData);
+            row.height = 150;
+            row.alignment = { vertical: "middle", horizontal: "center" };
+
+            if (pageCalColIdx !== -1 && pageCalendarImages && pageCalendarImages[pageIdx]) {
+                const calId = wb.addImage({
+                    base64: cleanBase64(pageCalendarImages[pageIdx]),
+                    extension: "png"
+                });
+                ws.addImage(calId, {
+                    tl: { col: pageCalColIdx + 0.08, row: rowNumber - 1 + 0.15 },
+                    ext: { width: 140, height: 110 },
+                    editAs: "oneCell"
+                });
+            }
+
+            for (let slot = 0; slot < puzzlesPerPage; slot++) {
+                const pIdx = pageIdx * puzzlesPerPage + slot;
+                if (pIdx < totalPuzzles) {
+                    const slotInfo = slotColMap[slot];
+
+                    if (gridImages[pIdx]) {
+                        const imgId = wb.addImage({
+                            base64: cleanBase64(gridImages[pIdx]),
+                            extension: "png"
+                        });
+                        ws.addImage(imgId, {
+                            tl: { col: slotInfo.gridColIdx + 0.08, row: rowNumber - 1 + 0.05 },
+                            ext: { width: 140, height: 140 },
+                            editAs: "oneCell"
+                        });
+                    }
+
+                    if (slotInfo.calColIdx !== undefined && calendarImages[pIdx]) {
+                        const calId = wb.addImage({
+                            base64: cleanBase64(calendarImages[pIdx]),
+                            extension: "png"
+                        });
+                        ws.addImage(calId, {
+                            tl: { col: slotInfo.calColIdx + 0.08, row: rowNumber - 1 + 0.15 },
+                            ext: { width: 140, height: 110 },
+                            editAs: "oneCell"
+                        });
+                    }
+
+                    if (slotInfo.solColIdx !== undefined && solutionImages[pIdx]) {
+                        const solId = wb.addImage({
+                            base64: cleanBase64(solutionImages[pIdx]),
+                            extension: "png"
+                        });
+                        ws.addImage(solId, {
+                            tl: { col: slotInfo.solColIdx + 0.08, row: rowNumber - 1 + 0.05 },
+                            ext: { width: 140, height: 140 },
+                            editAs: "oneCell"
+                        });
+                    }
+                }
+            }
         }
     }
 
@@ -1004,13 +1178,17 @@ function buildCanvaWordSearchSheetJS(options = {}) {
 
     const {
         puzzles = [],
+        puzzlesPerPage = 1,
         includeSolutionInSameExcel = true,
+        dateScope = "per_game",
         dateStrings = [],
+        pageDateStrings = [],
         hasCalendarImages = false,
         batchSize = 100
     } = options;
 
-    const totalPages = puzzles.length;
+    const totalPuzzles = puzzles.length;
+    const totalPages = (puzzlesPerPage === 1) ? totalPuzzles : Math.ceil(totalPuzzles / puzzlesPerPage);
     const effectiveBatchSize = (batchSize && batchSize > 0) ? batchSize : totalPages;
     const numBatches = Math.ceil(totalPages / effectiveBatchSize);
     const padLen = String(totalPages).length > 2 ? String(totalPages).length : 2;
@@ -1023,38 +1201,85 @@ function buildCanvaWordSearchSheetJS(options = {}) {
         const endPage = Math.min(totalPages, (b + 1) * effectiveBatchSize);
         const rows = [];
 
-        for (let i = startPage; i < endPage; i++) {
-            const p = puzzles[i];
-            const pNum = i + 1;
-            const pPad = String(pNum).padStart(3, "0");
+        if (puzzlesPerPage === 1) {
+            const activeDateStrings = (dateScope === "per_page" && pageDateStrings && pageDateStrings.length > 0)
+                ? pageDateStrings
+                : dateStrings;
+            for (let i = startPage; i < endPage; i++) {
+                const p = puzzles[i];
+                const pNum = i + 1;
+                const pPad = String(pNum).padStart(3, "0");
 
-            const row = {
-                title: p.title,
-                puzzle_number: pNum,
-                word_count: p.placedWords ? p.placedWords.length : 0,
-                words_list: p.placedWords ? p.placedWords.join(", ") : "",
-                grid_image: `page_${pPad}_grid.png`
-            };
+                const row = {
+                    title: p.title,
+                    puzzle_number: pNum,
+                    word_count: p.placedWords ? p.placedWords.length : 0,
+                    words_list: p.placedWords ? p.placedWords.join(", ") : "",
+                    grid_image: `page_${pPad}_grid.png`
+                };
 
-            if (dateStrings && dateStrings[i]) {
-                row.date = dateStrings[i];
+                if (activeDateStrings && activeDateStrings[i]) {
+                    row.date = activeDateStrings[i];
+                }
+
+                if (hasCalendarImages) {
+                    row.calendar_image = `page_${pPad}_calendar.png`;
+                }
+
+                if (includeSolutionInSameExcel) {
+                    row.solution_image = `page_${pPad}_solution.png`;
+                }
+
+                if (p.placedWords) {
+                    p.placedWords.forEach((word, wIdx) => {
+                        row[`word_${wIdx + 1}`] = word;
+                    });
+                }
+
+                rows.push(row);
             }
-
-            if (hasCalendarImages) {
-                row.calendar_image = `page_${pPad}_calendar.png`;
+        } else {
+            for (let pageIdx = startPage; pageIdx < endPage; pageIdx++) {
+                const row = { page_number: pageIdx + 1 };
+                if (dateScope === "per_page") {
+                    if (pageDateStrings && pageDateStrings[pageIdx]) {
+                        row.date = pageDateStrings[pageIdx];
+                    }
+                    if (hasCalendarImages) {
+                        const pagePad = String(pageIdx + 1).padStart(3, "0");
+                        row.calendar_image = `page_${pagePad}_calendar.png`;
+                    }
+                }
+                for (let slot = 0; slot < puzzlesPerPage; slot++) {
+                    const pIdx = pageIdx * puzzlesPerPage + slot;
+                    const slotNum = slot + 1;
+                    if (pIdx < totalPuzzles) {
+                        const p = puzzles[pIdx];
+                        const pNum = pIdx + 1;
+                        const pPad = String(pNum).padStart(3, "0");
+                        row[`puzzle_${slotNum}_title`] = p.title;
+                        row[`puzzle_${slotNum}_number`] = pNum;
+                        row[`puzzle_${slotNum}_word_count`] = p.placedWords ? p.placedWords.length : 0;
+                        row[`puzzle_${slotNum}_words_list`] = p.placedWords ? p.placedWords.join(", ") : "";
+                        if (dateScope !== "per_page" && dateStrings && dateStrings[pIdx]) {
+                            row[`puzzle_${slotNum}_date`] = dateStrings[pIdx];
+                        }
+                        row[`puzzle_${slotNum}_image`] = `page_${pPad}_grid.png`;
+                        if (dateScope !== "per_page" && hasCalendarImages) {
+                            row[`puzzle_${slotNum}_calendar`] = `page_${pPad}_calendar.png`;
+                        }
+                        if (includeSolutionInSameExcel) {
+                            row[`puzzle_${slotNum}_solution`] = `page_${pPad}_solution.png`;
+                        }
+                        if (p.placedWords) {
+                            p.placedWords.forEach((word, wIdx) => {
+                                row[`puzzle_${slotNum}_word_${wIdx + 1}`] = word;
+                            });
+                        }
+                    }
+                }
+                rows.push(row);
             }
-
-            if (includeSolutionInSameExcel) {
-                row.solution_image = `page_${pPad}_solution.png`;
-            }
-
-            if (p.placedWords) {
-                p.placedWords.forEach((word, wIdx) => {
-                    row[`word_${wIdx + 1}`] = word;
-                });
-            }
-
-            rows.push(row);
         }
 
         const ws = window.XLSX.utils.json_to_sheet(rows);
