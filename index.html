@@ -437,15 +437,15 @@
 </div>
 <div class="form-row-2">
 <div class="form-group">
-<label for="ws-line-color-sel">Grid Line Color</label>
+<label for="ws-line-color-sel">Grid Line Tone (B&amp;W Grayscale)</label>
 <select id="ws-line-color-sel">
-<option selected="" value="#9da49f">Neutral Gray (#9da49f)</option>
-<option value="#111815">Deep Black (#111815)</option>
-<option value="#516d61">Forest Green (#516d61)</option>
-<option value="#1a2c42">Navy Blue (#1a2c42)</option>
-<option value="custom">Custom Hex...</option>
+<option selected="" value="#8c8c8c">Medium Gray (#8c8c8c)</option>
+<option value="#b5b5b5">Light Gray (#b5b5b5)</option>
+<option value="#555555">Dark Gray (#555555)</option>
+<option value="#111111">Deep Black (#111111)</option>
+<option value="custom">Custom Grayscale Hex...</option>
 </select>
-<input id="ws-custom-line-hex" placeholder="#9DA49F" style="display:none; margin-top:4px;" type="text"/>
+<input id="ws-custom-line-hex" placeholder="#8C8C8C" style="display:none; margin-top:4px;" type="text"/>
 </div>
 <div class="form-group">
 <label for="ws-line-width-input">Line Thickness (mm) <span class="hint" id="ws-line-w-val">0.6mm</span></label>
@@ -489,15 +489,15 @@
 </div>
 <div class="form-row-2">
 <div class="form-group">
-<label for="ws-letter-color-sel">Letter Color</label>
+<label for="ws-letter-color-sel">Letter Tone (B&amp;W Grayscale)</label>
 <select id="ws-letter-color-sel">
-<option selected="" value="#202a26">Dark Charcoal (#202a26)</option>
-<option value="#000000">Jet Black (#000000)</option>
-<option value="#172721">Forest Ink (#172721)</option>
-<option value="#1a2c42">Navy Blue (#1a2c42)</option>
-<option value="custom">Custom Hex...</option>
+<option selected="" value="#111111">Rich Charcoal Black (#111111)</option>
+<option value="#000000">Pure Black (#000000)</option>
+<option value="#262626">Soft Black (#262626)</option>
+<option value="#404040">Dark Gray (#404040)</option>
+<option value="custom">Custom Grayscale Hex...</option>
 </select>
-<input id="ws-custom-letter-hex" placeholder="#202A26" style="display:none; margin-top:4px;" type="text"/>
+<input id="ws-custom-letter-hex" placeholder="#111111" style="display:none; margin-top:4px;" type="text"/>
 </div>
 <div class="form-group">
 <label for="ws-font-scale-slider">Letter Font Size (% of cell) <span class="hint" id="ws-font-scale-val">62%</span></label>
@@ -673,11 +673,11 @@ Each puzzle slot receives its own sequential calendar date.
 </select>
 </div>
 <div class="form-group">
-<label for="sdk-solution-mode">Solution Mark Mode</label>
+<label for="sdk-solution-mode">Solution Marker Style (B&amp;W)</label>
 <select id="sdk-solution-mode">
-<option selected="" value="color">Distinct Royal Blue Color</option>
-<option value="circled">Circled Solved Cells</option>
-<option value="normal">Same as Clue Color</option>
+<option selected="" value="color">Light Gray Shaded Marker (B&amp;W Print)</option>
+<option value="circled">Light Gray Circled Solved Cells</option>
+<option value="normal">Same as Clue Color (No Marker)</option>
 </select>
 </div>
 <div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">
@@ -751,13 +751,13 @@ Each puzzle slot receives its own sequential calendar date.
 </select>
 </div>
 <div class="form-group">
-<label for="ws-sol-style-sel">Solution Marker Style</label>
+<label for="ws-sol-style-sel">Solution Marker Style (B&amp;W)</label>
 <select id="ws-sol-style-sel">
-<option selected="" value="capsule">Capsule / Pill Highlighter (Multi-Color)</option>
-<option value="capsule_mono">Capsule Highlighter (Clean Monochrome)</option>
-<option value="circle">Circled Answer Letters</option>
-<option value="box">Boxed Answer Letters</option>
-<option value="bold">Bold Highlighted Letters Only</option>
+<option selected="" value="capsule">Light Gray Pill Marker (KDP B&amp;W Standard)</option>
+<option value="capsule_mono">Soft Grayscale Capsule</option>
+<option value="circle">Light Gray Circled Answer Letters</option>
+<option value="box">Light Gray Shaded Answer Boxes</option>
+<option value="bold">Bold Black Answer Letters + Muted Filler</option>
 </select>
 </div>
 <div class="form-group" style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-color);">

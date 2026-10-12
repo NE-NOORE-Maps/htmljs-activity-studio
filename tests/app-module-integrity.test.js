@@ -154,4 +154,37 @@ test('buildCanvaWordSearchExcel supports 2 games per page with separate word ban
     }
 });
 
+test('All puzzle presets and solution markers are strictly Black & White with light gray solution markers', async () => {
+    const { SUDOKU_PRESETS, WS_PRESETS, WORDSEARCH_HIGHLIGHT_COLORS } = await import('../js/canvas_renderer.js');
+    const { CALENDAR_THEMES } = await import('../js/calendar_builder.js');
+
+    const isGrayscaleHex = (hex) => {
+        const m = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/.exec(hex);
+        if (!m) return false;
+        return m[1].toLowerCase() === m[2].toLowerCase() && m[2].toLowerCase() === m[3].toLowerCase();
+    };
+
+    for (const [key, preset] of Object.entries(SUDOKU_PRESETS)) {
+        assert.ok(isGrayscaleHex(preset.gridColor), `Sudoku preset ${key} gridColor (${preset.gridColor}) must be B&W grayscale`);
+        assert.ok(isGrayscaleHex(preset.shadingColor), `Sudoku preset ${key} shadingColor (${preset.shadingColor}) must be B&W grayscale`);
+        assert.ok(isGrayscaleHex(preset.clueColor), `Sudoku preset ${key} clueColor (${preset.clueColor}) must be B&W grayscale`);
+        assert.ok(isGrayscaleHex(preset.solutionColor), `Sudoku preset ${key} solutionColor (${preset.solutionColor}) must be B&W grayscale`);
+    }
+
+    for (const [key, preset] of Object.entries(WS_PRESETS)) {
+        assert.ok(isGrayscaleHex(preset.gridLineColor), `WS preset ${key} gridLineColor (${preset.gridLineColor}) must be B&W grayscale`);
+        assert.ok(isGrayscaleHex(preset.letterColor), `WS preset ${key} letterColor (${preset.letterColor}) must be B&W grayscale`);
+    }
+
+    for (const color of WORDSEARCH_HIGHLIGHT_COLORS) {
+        assert.match(color, /^rgba\(0,\s*0,\s*0,\s*0\.\d+\)$/, `Word Search solution marker (${color}) must be light gray B&W`);
+    }
+
+    for (const [themeName, thm] of Object.entries(CALENDAR_THEMES)) {
+        assert.ok(isGrayscaleHex(thm.headerColor), `Calendar theme ${themeName} headerColor must be B&W grayscale`);
+        assert.ok(isGrayscaleHex(thm.badgeColor), `Calendar theme ${themeName} badgeColor must be B&W grayscale`);
+    }
+});
+
+
 

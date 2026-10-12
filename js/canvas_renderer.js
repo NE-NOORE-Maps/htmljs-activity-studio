@@ -194,15 +194,15 @@ export const SUDOKU_PRESETS = {
         outerLineWidth: 1.4,
         blockLineWidth: 1.0,
         innerLineWidth: 0.4,
-        gridColor: "#111815",
+        gridColor: "#111111",
         shadingMode: "none",
-        shadingColor: "#ecefe9",
+        shadingColor: "#eaeaea",
         fontScale: 64,
         clueFont: "Outfit",
-        clueColor: "#111815",
-        solutionColor: "#1d4ed8",
+        clueColor: "#000000",
+        solutionColor: "#222222",
         solutionMode: "color",
-        description: "Standard high-contrast publishing layout with bold 3×3 box dividers and balanced digits."
+        description: "Standard high-contrast B&W publishing layout with bold 3×3 box dividers and light gray solution markers."
     },
     "senior_large_print": {
         name: "👓 Senior / Large Print",
@@ -212,13 +212,13 @@ export const SUDOKU_PRESETS = {
         innerLineWidth: 0.7,
         gridColor: "#000000",
         shadingMode: "none",
-        shadingColor: "#e8eae6",
+        shadingColor: "#e8e8e8",
         fontScale: 82,
         clueFont: "Outfit",
         clueColor: "#000000",
-        solutionColor: "#1e3a8a",
+        solutionColor: "#222222",
         solutionMode: "color",
-        description: "Extra-bold high-visibility borders with giant 82% digits for maximum reading comfort."
+        description: "Extra-bold high-visibility B&W borders with giant 82% digits for maximum reading comfort."
     },
     "checkerboard": {
         name: "🏁 Checkerboard / Shaded Blocks",
@@ -226,15 +226,15 @@ export const SUDOKU_PRESETS = {
         outerLineWidth: 1.3,
         blockLineWidth: 1.0,
         innerLineWidth: 0.4,
-        gridColor: "#1f2937",
+        gridColor: "#1a1a1a",
         shadingMode: "checkerboard",
-        shadingColor: "#ebefe9",
+        shadingColor: "#ebebeb",
         fontScale: 65,
         clueFont: "Outfit",
-        clueColor: "#111815",
-        solutionColor: "#047857",
+        clueColor: "#000000",
+        solutionColor: "#222222",
         solutionMode: "color",
-        description: "Alternating soft shaded 3×3 blocks to help solvers track regions effortlessly."
+        description: "Alternating soft light-gray 3×3 blocks to help solvers track regions effortlessly in B&W."
     },
     "kids_fun": {
         name: "🎈 Kids Fun (Rounded Cards)",
@@ -242,15 +242,15 @@ export const SUDOKU_PRESETS = {
         outerLineWidth: 1.0,
         blockLineWidth: 0.8,
         innerLineWidth: 0.5,
-        gridColor: "#334155",
+        gridColor: "#333333",
         shadingMode: "none",
-        shadingColor: "#f1f5f9",
+        shadingColor: "#efefef",
         fontScale: 76,
         clueFont: "Outfit",
-        clueColor: "#0f172a",
-        solutionColor: "#b91c1c",
+        clueColor: "#000000",
+        solutionColor: "#222222",
         solutionMode: "color",
-        description: "Soft rounded cell cards with large friendly digits. Ideal for 4×4 and 6×6 kids books."
+        description: "Soft rounded cell cards with large friendly B&W digits. Ideal for 4×4 and 6×6 kids books."
     },
     "modern_minimalist": {
         name: "📐 Modern Minimalist",
@@ -258,15 +258,15 @@ export const SUDOKU_PRESETS = {
         outerLineWidth: 1.1,
         blockLineWidth: 0.7,
         innerLineWidth: 0.3,
-        gridColor: "#4b5563",
+        gridColor: "#444444",
         shadingMode: "none",
-        shadingColor: "#f3f4f6",
+        shadingColor: "#f2f2f2",
         fontScale: 60,
         clueFont: "Plus Jakarta Sans",
-        clueColor: "#1f2937",
-        solutionColor: "#4f46e5",
+        clueColor: "#111111",
+        solutionColor: "#222222",
         solutionMode: "color",
-        description: "Clean, understated hairline aesthetic with contemporary proportion and neutral tones."
+        description: "Clean, understated hairline B&W aesthetic with contemporary proportion and neutral tones."
     }
 };
 
@@ -310,7 +310,7 @@ export function renderSudokuGridCanvas({
     // 1. Optional Header Rendering
     if (includeHeader) {
         const titleFontPx = Math.max(10, Math.round(headerHPx * 0.42));
-        ctx.fillStyle = style.clueColor || "#111815";
+        ctx.fillStyle = style.clueColor || "#111111";
         ctx.font = `bold ${titleFontPx}px "Outfit", sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
@@ -319,12 +319,12 @@ export function renderSudokuGridCanvas({
         ctx.fillText(titleDisplay, 10, headerHPx * 0.35);
 
         const diffFontPx = Math.max(8, Math.round(headerHPx * 0.28));
-        ctx.fillStyle = "#4B5563";
+        ctx.fillStyle = "#4A4A4A";
         ctx.font = `${diffFontPx}px "Plus Jakarta Sans", sans-serif`;
         ctx.textAlign = "right";
         ctx.fillText(`${puzzle.difficultyLabel} ${puzzle.difficultyStars}`, gridW - 10, headerHPx * 0.35);
 
-        ctx.strokeStyle = "#D1D5DB";
+        ctx.strokeStyle = "#D4D4D4";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, headerHPx - 2);
@@ -340,7 +340,7 @@ export function renderSudokuGridCanvas({
     const applyChecker = style.shadingMode === "checkerboard";
     const windokuWindows = [[1, 1], [1, 5], [5, 1], [5, 5]];
 
-    ctx.fillStyle = style.shadingColor || "#EFEFEF";
+    ctx.fillStyle = style.shadingColor || "#EAEAEA";
 
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
@@ -371,8 +371,22 @@ export function renderSudokuGridCanvas({
         }
     }
 
+    // 2b. Light Gray Solution Marker Fill for Solved (non-clue) Cells in B&W
+    if (solution && style.solutionMode === "color") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+        const pad = Math.max(1, Math.round(cellPx * 0.06));
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                const isClue = Boolean(puzzle.cluesGrid[r][c]);
+                if (!isClue && puzzle.solutionGrid[r][c]) {
+                    ctx.fillRect(c * cellPx + pad, yOffset + r * cellPx + pad, cellPx - 2 * pad, cellPx - 2 * pad);
+                }
+            }
+        }
+    }
+
     // 3. Grid Lines
-    ctx.strokeStyle = style.gridColor || "#111815";
+    ctx.strokeStyle = style.gridColor || "#111111";
 
     if (style.cellStyle === "rounded_boxes") {
         const radius = Math.round(cellPx * 0.18);
@@ -479,25 +493,27 @@ export function renderSudokuGridCanvas({
 
             if (solution) {
                 if (isClue) {
-                    ctx.fillStyle = style.clueColor || "#111815";
+                    ctx.fillStyle = style.clueColor || "#000000";
                     ctx.font = `bold ${fontPx}px ${fontSpec}`;
                     ctx.fillText(symbol, cx, cy);
                 } else {
-                    // Solved digit
+                    // Solved digit in B&W with light gray marker
                     if (style.solutionMode === "circled") {
                         const circleR = cellPx * 0.40;
-                        ctx.strokeStyle = style.solutionColor || "#1d4ed8";
-                        ctx.lineWidth = Math.max(1, Math.round(innerLw * 1.5));
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
+                        ctx.strokeStyle = "#555555";
+                        ctx.lineWidth = Math.max(1, Math.round(innerLw * 1.4));
                         ctx.beginPath();
                         ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+                        ctx.fill();
                         ctx.stroke();
                     }
-                    ctx.fillStyle = style.solutionColor || "#1d4ed8";
+                    ctx.fillStyle = style.solutionColor || "#222222";
                     ctx.font = `bold ${fontPx}px ${fontSpec}`;
                     ctx.fillText(symbol, cx, cy);
                 }
             } else {
-                ctx.fillStyle = style.clueColor || "#111815";
+                ctx.fillStyle = style.clueColor || "#000000";
                 ctx.font = `bold ${fontPx}px ${fontSpec}`;
                 ctx.fillText(symbol, cx, cy);
             }
@@ -515,71 +531,71 @@ export function renderSudokuGridCanvas({
  * Render a composite solution page with multiple solved Sudoku answers.
  */
 
-// Word Search Highlight Colors
+// Word Search Highlight Colors (100% Black & White Light Gray Markers for KDP Print)
 export const WORDSEARCH_HIGHLIGHT_COLORS = [
-    "rgba(34, 197, 94, 0.32)",
-    "rgba(59, 130, 246, 0.32)",
-    "rgba(249, 115, 22, 0.32)",
-    "rgba(168, 85, 247, 0.32)",
-    "rgba(236, 72, 153, 0.32)",
-    "rgba(234, 179, 8, 0.32)",
-    "rgba(20, 184, 166, 0.32)",
-    "rgba(99, 102, 241, 0.32)"
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)",
+    "rgba(0, 0, 0, 0.16)"
 ];
 
 /**
- * Default Word Search Presets
+ * Default Word Search Presets (Strictly Black & White / Grayscale)
  */
 export const WS_PRESETS = {
     adult_classic: {
         cellStyle: "grid",
         gridLineWidth: 0.6,
-        gridLineColor: "#9da49f",
+        gridLineColor: "#8c8c8c",
         fontScale: 62,
         letterFont: "'Outfit', sans-serif",
-        letterColor: "#202a26",
+        letterColor: "#111111",
         solutionStyle: "capsule",
-        description: "Crisp traditional grid lines, balanced font proportion, neutral tones. Standard for adult puzzle books."
+        description: "Crisp B&W grid lines, balanced font proportion, and light-gray solution marker. Standard for adult puzzle books."
     },
     senior_large_print: {
         cellStyle: "boxes",
         gridLineWidth: 0.9,
-        gridLineColor: "#111815",
+        gridLineColor: "#111111",
         fontScale: 75,
         letterFont: "'Atkinson Hyperlegible', sans-serif",
         letterColor: "#000000",
         solutionStyle: "capsule",
-        description: "Bold high-contrast cell boxes and hyper-legible enlarged letters for seniors and large print editions."
+        description: "Bold high-contrast B&W cell boxes and hyper-legible enlarged letters for seniors and large print editions."
     },
     kids_activity: {
         cellStyle: "rounded_boxes",
         gridLineWidth: 0.8,
-        gridLineColor: "#516d61",
+        gridLineColor: "#555555",
         fontScale: 68,
         letterFont: "'Fredoka', sans-serif",
-        letterColor: "#172721",
+        letterColor: "#111111",
         solutionStyle: "capsule",
-        description: "Playful rounded cell tiles, friendly rounded kids font, and large punchy letters. Perfect for kids' activity books."
+        description: "Playful rounded B&W cell tiles, friendly rounded kids font, and light-gray solution marker."
     },
     classroom_clean: {
         cellStyle: "none",
         gridLineWidth: 0.0,
-        gridLineColor: "#9da49f",
+        gridLineColor: "#8c8c8c",
         fontScale: 65,
         letterFont: "'Quicksand', sans-serif",
         letterColor: "#000000",
         solutionStyle: "box",
-        description: "Clean borderless design without grid lines. Floating letters for a modern classroom aesthetic."
+        description: "Clean borderless B&W design without grid lines. Floating letters for a modern classroom aesthetic."
     },
     custom: {
         cellStyle: "grid",
         gridLineWidth: 0.6,
-        gridLineColor: "#9da49f",
+        gridLineColor: "#8c8c8c",
         fontScale: 62,
         letterFont: "'Outfit', sans-serif",
-        letterColor: "#202a26",
+        letterColor: "#111111",
         solutionStyle: "capsule",
-        description: "Full manual control over every slider, font category, color, and line option."
+        description: "Full manual control over every slider, font category, B&W grayscale tone, and line option."
     }
 };
 
@@ -619,7 +635,7 @@ export function renderWordSearchGridCanvas({
     // 1. Header (if requested)
     if (includeHeader) {
         const titleFontPx = Math.max(10, Math.round(headerHPx * 0.42));
-        ctx.fillStyle = style.letterColor || "#111815";
+        ctx.fillStyle = style.letterColor || "#111111";
         ctx.font = `bold ${titleFontPx}px "Outfit", sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
@@ -627,7 +643,7 @@ export function renderWordSearchGridCanvas({
         const titleDisplay = dateText ? `${puzzle.title} · ${dateText}` : puzzle.title;
         ctx.fillText(titleDisplay, 10, headerHPx * 0.35);
 
-        ctx.strokeStyle = "#D1D5DB";
+        ctx.strokeStyle = "#D4D4D4";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, headerHPx - 2);
@@ -641,7 +657,7 @@ export function renderWordSearchGridCanvas({
     const cellStyle = style.cellStyle || "grid";
     const rawLw = style.gridLineWidth !== undefined ? style.gridLineWidth : 0.6;
     const lineW = Math.max(1, Math.round((rawLw / MM_TO_INCH) * dpi));
-    const lineCol = style.gridLineColor || "#9da49f";
+    const lineCol = style.gridLineColor || "#8c8c8c";
     const solStyle = style.solutionStyle || "capsule";
 
     // 2. Grid lines & borders according to cellStyle
@@ -742,9 +758,9 @@ export function renderWordSearchGridCanvas({
         });
     }
 
-    // 3. Solution Highlighting Layer (Under letters)
+    // 3. Solution Highlighting Layer (Under letters — strictly Black & White light gray marker)
     if (solution && puzzle.placements) {
-        if (solStyle === "capsule") {
+        if (solStyle === "capsule" || solStyle === "capsule_mono") {
             puzzle.placements.forEach((placement, pIdx) => {
                 const color = WORDSEARCH_HIGHLIGHT_COLORS[pIdx % WORDSEARCH_HIGHLIGHT_COLORS.length];
                 const [r1, c1] = placement.start;
@@ -757,28 +773,8 @@ export function renderWordSearchGridCanvas({
 
                 ctx.save();
                 ctx.lineCap = "round";
-                ctx.lineWidth = Math.round(cellPx * 0.78);
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-                ctx.restore();
-            });
-        } else if (solStyle === "capsule_mono") {
-            puzzle.placements.forEach(placement => {
-                const [r1, c1] = placement.start;
-                const [r2, c2] = placement.end;
-
-                const x1 = c1 * cellPx + cellPx / 2;
-                const y1 = yOffset + r1 * cellPx + cellPx / 2;
-                const x2 = c2 * cellPx + cellPx / 2;
-                const y2 = yOffset + r2 * cellPx + cellPx / 2;
-
-                ctx.save();
-                ctx.lineCap = "round";
                 ctx.lineWidth = Math.round(cellPx * 0.76);
-                ctx.strokeStyle = "rgba(17, 24, 39, 0.22)";
+                ctx.strokeStyle = color;
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.lineTo(x2, y2);
@@ -792,8 +788,9 @@ export function renderWordSearchGridCanvas({
                 const [sr, sc] = placement.start;
 
                 ctx.save();
-                ctx.lineWidth = Math.max(2, Math.round((0.8 / MM_TO_INCH) * dpi));
-                ctx.strokeStyle = "#2563EB";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+                ctx.lineWidth = Math.max(1.5, Math.round((0.6 / MM_TO_INCH) * dpi));
+                ctx.strokeStyle = "#555555";
                 const pad = Math.round(cellPx * 0.08);
 
                 for (let i = 0; i < len; i++) {
@@ -803,6 +800,7 @@ export function renderWordSearchGridCanvas({
                     const by = yOffset + r * cellPx + pad;
                     const bw = cellPx - 2 * pad;
                     const bh = cellPx - 2 * pad;
+                    ctx.fillRect(bx, by, bw, bh);
                     ctx.strokeRect(bx, by, bw, bh);
                 }
                 ctx.restore();
@@ -814,8 +812,9 @@ export function renderWordSearchGridCanvas({
                 const [sr, sc] = placement.start;
 
                 ctx.save();
-                ctx.lineWidth = Math.max(2, Math.round((0.75 / MM_TO_INCH) * dpi));
-                ctx.strokeStyle = "#1D4ED8";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+                ctx.lineWidth = Math.max(1.5, Math.round((0.6 / MM_TO_INCH) * dpi));
+                ctx.strokeStyle = "#555555";
                 const radius = Math.round(cellPx * 0.42);
 
                 for (let i = 0; i < len; i++) {
@@ -825,10 +824,20 @@ export function renderWordSearchGridCanvas({
                     const cy = yOffset + r * cellPx + cellPx / 2;
                     ctx.beginPath();
                     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.stroke();
                 }
                 ctx.restore();
             });
+        } else if (solStyle === "bold") {
+            const pad = Math.max(1, Math.round(cellPx * 0.06));
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+            solvedSet.forEach(key => {
+                const [r, c] = key.split(",").map(Number);
+                ctx.fillRect(c * cellPx + pad, yOffset + r * cellPx + pad, cellPx - 2 * pad, cellPx - 2 * pad);
+            });
+            ctx.restore();
         }
     }
 
@@ -836,7 +845,7 @@ export function renderWordSearchGridCanvas({
     const fontScale = (style.fontScale || 62) / 100.0;
     const fontPx = Math.max(8, Math.round(cellPx * fontScale));
     const fontFam = style.letterFont || "'Outfit', sans-serif";
-    const letterCol = style.letterColor || "#202a26";
+    const letterCol = style.letterColor || "#111111";
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -850,9 +859,14 @@ export function renderWordSearchGridCanvas({
             const cy = yOffset + r * cellPx + cellPx / 2;
             const isSolved = solvedSet.has(`${r},${c}`);
 
-            if (solution && solStyle === "bold" && isSolved) {
-                ctx.fillStyle = "#1E3A8A";
-                ctx.font = `800 ${fontPx + 1}px ${fontFam}`;
+            if (solution && solStyle === "bold") {
+                if (isSolved) {
+                    ctx.fillStyle = "#000000";
+                    ctx.font = `800 ${fontPx + 1}px ${fontFam}`;
+                } else {
+                    ctx.fillStyle = "#7A7A7A";
+                    ctx.font = `bold ${fontPx}px ${fontFam}`;
+                }
             } else {
                 ctx.fillStyle = letterCol;
                 ctx.font = `bold ${fontPx}px ${fontFam}`;

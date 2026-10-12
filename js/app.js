@@ -100,7 +100,7 @@ const state = {
     startDate: "2026-01-01",
     progression: "daily",
     dateFormat: "27-September",
-    calTheme: "Modern Emerald",
+    calTheme: "High Contrast B&W",
     calBorder: true,
     calSunday: true,
     calShowYear: true,

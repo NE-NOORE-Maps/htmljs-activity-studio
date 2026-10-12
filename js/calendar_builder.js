@@ -18,68 +18,41 @@ export const DATE_FORMAT_PRESETS = [
 ];
 
 export const CALENDAR_THEMES = {
-    "Modern Emerald": {
-        headerColor: "#184534",
-        badgeColor: "#184534",
-        dayHeaderColor: "#52796F",
-        textColor: "#1E293B",
+    "High Contrast B&W": {
+        headerColor: "#000000",
+        badgeColor: "#222222",
+        dayHeaderColor: "#333333",
+        textColor: "#000000",
         highlightTextColor: "#FFFFFF",
-        borderColor: "#D1D5DB",
+        borderColor: "#222222",
+        bgColor: "#FFFFFF"
+    },
+    "Soft Grayscale": {
+        headerColor: "#111111",
+        badgeColor: "#444444",
+        dayHeaderColor: "#555555",
+        textColor: "#222222",
+        highlightTextColor: "#FFFFFF",
+        borderColor: "#A3A3A3",
         bgColor: "#FFFFFF"
     },
     "Minimalist Slate": {
-        headerColor: "#0F172A",
-        badgeColor: "#0F172A",
-        dayHeaderColor: "#64748B",
-        textColor: "#334155",
+        headerColor: "#1A1A1A",
+        badgeColor: "#333333",
+        dayHeaderColor: "#666666",
+        textColor: "#262626",
         highlightTextColor: "#FFFFFF",
-        borderColor: "#E2E8F0",
+        borderColor: "#D4D4D4",
         bgColor: "#FFFFFF"
     },
-    "Royal Navy": {
-        headerColor: "#1E3A8A",
-        badgeColor: "#1E3A8A",
-        dayHeaderColor: "#3B82F6",
-        textColor: "#1E293B",
-        highlightTextColor: "#FFFFFF",
-        borderColor: "#CBD5E1",
-        bgColor: "#FFFFFF"
-    },
-    "Warm Amber": {
-        headerColor: "#78350F",
-        badgeColor: "#B45309",
-        dayHeaderColor: "#D97706",
-        textColor: "#451A03",
-        highlightTextColor: "#FFFFFF",
-        borderColor: "#FDE68A",
-        bgColor: "#FFFBEB"
-    },
-    "Rosewood": {
-        headerColor: "#881337",
-        badgeColor: "#BE123C",
-        dayHeaderColor: "#E11D48",
-        textColor: "#4C0519",
-        highlightTextColor: "#FFFFFF",
-        borderColor: "#FECDD3",
-        bgColor: "#FFF1F2"
-    },
-    "Soft Lavender": {
-        headerColor: "#4C1D95",
-        badgeColor: "#6D28D9",
-        dayHeaderColor: "#8B5CF6",
-        textColor: "#2E1065",
-        highlightTextColor: "#FFFFFF",
-        borderColor: "#DDD6FE",
-        bgColor: "#F5F3FF"
-    },
-    "High Contrast B&W": {
+    "Light Gray Card": {
         headerColor: "#000000",
-        badgeColor: "#000000",
-        dayHeaderColor: "#000000",
-        textColor: "#000000",
+        badgeColor: "#1A1A1A",
+        dayHeaderColor: "#404040",
+        textColor: "#111111",
         highlightTextColor: "#FFFFFF",
-        borderColor: "#000000",
-        bgColor: "#FFFFFF"
+        borderColor: "#BFBFBF",
+        bgColor: "#F7F7F7"
     }
 };
 
@@ -190,7 +163,7 @@ export function renderMiniMonthCalendarCanvas({
     highlightDay = 27,
     width = 420,
     height = 340,
-    theme = "Modern Emerald",
+    theme = "High Contrast B&W",
     firstDaySunday = true,
     showCardBorder = true,
     showYear = true
@@ -200,7 +173,7 @@ export function renderMiniMonthCalendarCanvas({
     canvas.height = height;
     const ctx = canvas.getContext("2d");
 
-    const thm = CALENDAR_THEMES[theme] || CALENDAR_THEMES["Modern Emerald"];
+    const thm = CALENDAR_THEMES[theme] || CALENDAR_THEMES["High Contrast B&W"];
 
     // Background
     ctx.fillStyle = thm.bgColor;
