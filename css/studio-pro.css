@@ -150,6 +150,8 @@ button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .section-label { margin-top: 0; }
 .advanced { margin-top: 12px; }
 .settings-secondary > .advanced:first-child, .review-downloads .advanced { margin-top: 0; }
+.canva-options-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; }
+.canva-options-card .section-label { margin-bottom: 12px; }
 .step-actions { padding-top: 14px; }
 .step-actions #step-next { flex: 0 1 auto; margin-left: auto; }
 .studio-stage { position: sticky; top: 72px; align-self: start; height: calc(100dvh - 72px); max-height: none; padding: 22px; gap: 14px; overflow: auto; }

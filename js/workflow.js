@@ -77,6 +77,10 @@ export function updateWorkflow(state) {
         el(id).disabled=!!state.isExporting||(id==='btn-export-pdf'?state.pdfBlocked:state.exportBlocked);
     }
     el('export-summary-text').textContent=`${book.count} puzzles · ${book.trim} · ${book.totalPages} PDF pages`;
+    const sdkAnsBadge = el('sdk-review-answers-badge');
+    if (sdkAnsBadge) sdkAnsBadge.textContent = `${state.solutionsPerPage} answers / page`;
+    const wsAnsBadge = el('ws-review-answers-badge');
+    if (wsAnsBadge) wsAnsBadge.textContent = `${state.wsSolutionsPerPage} answers / page`;
     el('studio-message').textContent=state.previewError || (invalidContent?'Check your content in Review & export before downloading.':'');
 }
 

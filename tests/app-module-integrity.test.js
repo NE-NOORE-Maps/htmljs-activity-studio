@@ -52,3 +52,10 @@ test('index.html and app.js use synchronized cache-busting version parameters', 
         assert.equal(v, version, `Import version in app.js (${v}) should match index.html version (${version})`);
     }
 });
+
+test('index.html tab panels match workflow.js step sequence order', () => {
+    const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const panelMatches = [...indexHtml.matchAll(/class="tab-panel[^"]*"\s+id="([^"]+)"/g)].map(m => m[1]);
+    assert.deepEqual(panelMatches, ['tab-volume', 'tab-rules', 'tab-styling', 'tab-review']);
+});
+
